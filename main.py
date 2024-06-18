@@ -1,4 +1,4 @@
-from src import main
+from artifactor.app.main import main
 
 
 if __name__ == "__main__":
