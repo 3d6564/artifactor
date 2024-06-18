@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from artifactor.utils.logger import Logger
+from utils import Logger
 
 class ParallelExecutor:
     def __init__(self):

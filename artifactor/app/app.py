@@ -1,8 +1,8 @@
 import os
 from .menu import print_ascii_art, print_menu
-from artifactor.config import EnvManager
-from artifactor.utils.hosts import HostManager
-from artifactor.commands import CommandGenerator, ParallelExecutor
+from config import EnvManager
+from utils import HostManager
+from commands import CommandGenerator, ParallelExecutor
 
 
 def main():
@@ -78,3 +78,6 @@ def main():
             break
         else:
             print("\n\033[1;31mInvalid choice, please try again.\033[0m")
+
+if __name__ == "__main__":
+    main()

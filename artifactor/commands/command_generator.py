@@ -1,4 +1,4 @@
-from artifactor.connectors.ssh_client import SSHClient
+from connectors import SSHClient
 
 
 class CommandGenerator:
