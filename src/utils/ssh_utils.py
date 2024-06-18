@@ -27,7 +27,7 @@ def run_command_on_host(command, host, jumpbox, jumpbox_username, jumpbox_key_pa
         stdin, stdout, stderr = target_client.exec_command(command)
         output = stdout.read() + stderr.read()
 
-        if use_jumpbox:
+        if use_jumpbox == True:
             target_client.close()
             jumpbox_client.close()
         else:
