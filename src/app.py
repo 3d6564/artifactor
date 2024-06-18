@@ -1,6 +1,6 @@
 import os
-from dotenv import load_dotenv, set_key
-from .utils import load_hosts, save_hosts, list_processes, list_users, get_system_info, execute_commands_in_parallel
+from dotenv import load_dotenv, set_key, dotenv_values
+from .utils import load_hosts, save_hosts, get_processes, get_users, get_system_info, execute_commands_in_parallel
 
 
 def print_ascii_art():
@@ -22,12 +22,30 @@ def check_and_create_env_file():
         with open('.env', 'w') as f:
             pass
 
-def get_or_set_env_var(var_name, prompt_text):
-    value = os.getenv(var_name)
+def get_env_var(var_name):
+    return os.getenv(var_name)
+
+def set_env_var(var_name, var_value):
+    env_vars = dotenv_values(".env")
+    env_vars[var_name] = var_value
+    with open(".env", "w") as f:
+        for key, value in env_vars.items():
+            f.write(f"{key}={value}\n")
+
+def get_or_prompt_env_var(var_name, prompt_text):
+    value = get_env_var(var_name)
     if value is None:
         value = input(prompt_text)
-        set_key('.env', var_name, value)
+        set_env_var(var_name, value)
     return value
+
+def set_jumpbox_use():
+    jumpbox_use = input("Do you want to use a jumpbox? (True/False): ").strip()
+    while jumpbox_use not in ["True", "False"]:
+        jumpbox_use = input("Invalid input. Do you want to use a jumpbox? (True/False): ").strip()
+    set_env_var('USE_JUMPBOX', jumpbox_use)
+    load_dotenv(override=True)
+    print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")
 
 def main():
     load_dotenv()
@@ -37,19 +55,25 @@ def main():
     file_path = 'host_list'
 
     # ------------------------ #
-    jumpbox_key_path = get_or_set_env_var('JUMPBOX_KEY', "Enter the path to your jumpbox SSH key: ")
-    jumpbox_username = get_or_set_env_var('JUMPBOX_USERNAME', "Enter the SSH username for the jumpbox: ")
+    jumpbox_key_path = get_or_prompt_env_var('JUMPBOX_KEY', "Enter the path to your jumpbox SSH key: ")
+    jumpbox_username = get_or_prompt_env_var('JUMPBOX_USERNAME', "Enter the SSH username for the jumpbox: ")
 
-    target_key_path = get_or_set_env_var('TARGET_KEY', "Enter the path to your target host SSH key: ")
-    target_username = get_or_set_env_var('TARGET_USERNAME', "Enter the SSH username for the target hosts: ")
-    jumpbox = get_or_set_env_var('JUMPBOX', "Enter the hostname or IP address of the jumpbox: ")
+    target_key_path = get_or_prompt_env_var('TARGET_KEY', "Enter the path to your target host SSH key: ")
+    target_username = get_or_prompt_env_var('TARGET_USERNAME', "Enter the SSH username for the target hosts: ")
+    use_jumpbox = get_or_prompt_env_var('USE_JUMPBOX', "Enter True or False to use a jumpbox: ")
+    if use_jumpbox not in ["True", "False"]:
+        use_jumpbox = input("Invalid input. Do you want to use a jumpbox? (True/False): ").strip()
+        set_key('.env', 'USE_JUMPBOX', use_jumpbox)
+    if use_jumpbox:
+        jumpbox = get_or_prompt_env_var('JUMPBOX', "Enter the hostname or ip of a jumpbox: ")
+    
 
     # ------------------------ #
     hosts = load_hosts(file_path)
     print(f"Hosts loaded from {file_path} file...")
     commands = {
-        '1': list_processes,
-        '2': list_users,
+        '1': get_processes,
+        '2': get_users,
         '3': get_system_info,
     }
 
@@ -59,7 +83,8 @@ def main():
         print("2. Load hosts from file")
         print("3. Save hosts to file")
         print("4. Run command on hosts")
-        print("5. Exit")
+        print("5. Set jumpbox usage")
+        print("6. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -93,6 +118,8 @@ def main():
             else:
                 print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
         elif choice == '5':
+            set_jumpbox_use()
+        elif choice == '6':
             break
         else:
             print("\n\033[1;31mInvalid choice, please try again.\033[0m")
