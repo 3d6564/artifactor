@@ -1,5 +1,6 @@
 import os
 import paramiko
+from config import EnvManager
 
 class SSHClient:
 
@@ -13,7 +14,8 @@ class SSHClient:
         return client
 
     def run_command_on_host(self, command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
-        use_jumpbox = os.getenv('USE_JUMPBOX', 'False').lower() in ['true', '1', 't']
+        env_manager = EnvManager()
+        use_jumpbox = env_manager.get_env_var('USE_JUMPBOX').lower() in ['y']
         try:
             if use_jumpbox:
                 jumpbox_client = self.create_ssh_client(jumpbox, jumpbox_username, jumpbox_key_path)
@@ -35,3 +37,16 @@ class SSHClient:
             return host, output.decode()
         except Exception as e:
             return host, str(e)
+        
+    def detect_os(self, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
+        os_command = 'uname'  # Basic command to identify the OS type
+        host, output = self.run_command_on_host(os_command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)
+
+        if 'Linux' in output:
+            return 'linux'
+        else:
+            os_command = 'ver'  # Command to identify Windows OS
+            host, output = self.run_command_on_host(os_command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)
+            if 'Windows' in output:
+                return 'windows'
+        return 'unknown'

@@ -8,7 +8,7 @@ class ParallelExecutor:
         self.logger = Logger()
     
 
-    def execute_commands_in_parallel(self, command_func, command, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
+    def execute_commands_in_parallel(self, command_func, command, command_name, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path, os_type):
         if not hosts:
             print("No hosts available to run the command.")
             return {}
@@ -27,12 +27,12 @@ class ParallelExecutor:
             }
             for future in as_completed(future_to_host):
                 host = future_to_host[future]
-                log_name = self.logger.generate_log_name(host)
+                log_name = self.logger.generate_log_name(host, command_name)
                 try:
                     host, result = future.result()
                     results[host] = result
-                    self.logger.write_output(log_name, f"Results for {host}:\n{result}")
-                    print(f"\n\033[1;32mHost {host} results written to {log_name}\033[0m")
+                    self.logger.write_output(log_name, result)
+                    print(f"\033[1;32mHost {host} results written to {log_name}\033[0m")
                 except Exception as e:
                     results[host] = str(e)
                     self.logger.write_output(log_name, f"Error for {host}:\n{e}")

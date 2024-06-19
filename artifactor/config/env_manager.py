@@ -30,9 +30,9 @@ class EnvManager:
         return value
 
     def set_jumpbox_use(self):
-        jumpbox_use = input("Do you want to use a jumpbox? (True/False): ").strip()
-        while jumpbox_use not in ["True", "False"]:
-            jumpbox_use = input("Invalid input. Do you want to use a jumpbox? (True/False): ").strip()
+        jumpbox_use = input("Do you want to use a jumpbox? (Y/N): ").strip().upper()
+        while jumpbox_use.upper() not in ["Y", "N"]:
+            jumpbox_use = input("Invalid input. Do you want to use a jumpbox? (Y/N): ").strip()
         self.set_env_var('USE_JUMPBOX', jumpbox_use)
         load_dotenv(override=True)
         print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")

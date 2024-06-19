@@ -21,13 +21,20 @@ class CommandGenerator:
         with open(self.commands_file, 'w') as f:
             json.dump(self.commands, f, indent=4)
 
-    def run_command(self, command_name, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path, os_type="linux"):
+    def run_command(self, command_name, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
         self.commands = self.load_commands()
-        command = self.commands.get(command_name, {}).get(os_type)
-        if command:
-            return self.parallel_executor.execute_commands_in_parallel(self.ssh_client.run_command_on_host, command, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)
-        else:
-            raise ValueError(f"Command '{command_name}' not found for OS type '{os_type}'")
+        os_types = {host: self.ssh_client.detect_os(host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path) for host in hosts}
+        
+        for host, os_type in os_types.items():
+            if os_type == 'unknown':
+                print(f"Could not determine the OS of {host}. Skipping...")
+                continue
+            
+            command = self.commands.get(command_name, {}).get(os_type)
+            if command:
+                return self.parallel_executor.execute_commands_in_parallel(self.ssh_client.run_command_on_host, command, command_name, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path, os_type)
+            else:
+                raise ValueError(f"Command '{command_name}' not found for OS type '{os_type}'")
 
     def add_command(self, command_name, linux_command, windows_command):
         self.commands[command_name] = {

@@ -1,5 +1,6 @@
 .env
 host_list
+commands.json
+*.backup
 logs/*
 __pycache__/
-utils/__pycache__/

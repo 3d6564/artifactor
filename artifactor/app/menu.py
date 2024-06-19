@@ -1,3 +1,4 @@
+import os
 from commands import CommandGenerator
 from config import EnvManager
 
@@ -14,6 +15,25 @@ def print_ascii_art():
     \033[1;35m          3d6564 (\033[1;31m3d6564@gmail.com\033[1;35m)\033[0m
     """
     print(art)
+
+def initialize_menu():
+     env_manager = EnvManager()
+     print("\nInitializing environment...\n")
+
+     # Jumpbox
+     if env_manager.get_env_var('USE_JUMPBOX') is None:
+          env_manager.set_jumpbox_use()
+
+     if env_manager.get_env_var('USE_JUMPBOX') == 'Y':
+          jumpbox = env_manager.get_or_prompt_env_var('JUMPBOX', "Enter the hostname or ip of a jumpbox: ")
+          jumpbox_username = env_manager.get_or_prompt_env_var('JUMPBOX_USERNAME', "Enter the SSH username for the jumpbox: ")
+          jumpbox_key_path = env_manager.get_or_prompt_env_var('JUMPBOX_KEY', "Enter the path to your jumpbox SSH key: ")
+
+     # Target Host
+     target_username = env_manager.get_or_prompt_env_var('TARGET_USERNAME', "Enter the SSH username for the targets: ")
+     target_key_path = env_manager.get_or_prompt_env_var('TARGET_KEY', "Enter the path to your target SSH key: ")
+     
+     return jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path
 
 def main_menu():
      print("\nSelect an option:")
@@ -83,12 +103,15 @@ def set_jumpbox_usage():
 
 
 def configure_menu():
+     env_manager = EnvManager()
+     current_jumpbox_state = env_manager.get_or_prompt_env_var('USE_JUMPBOX', 'False')
+
      while True:
           print("\nConfigure options:")
           print("1. Add command")
           print("2. Load commands")
           print("3. Save commands")
-          print("4. Set jumpbox usage")
+          print(f"4. Set Jumpbox Usage (current: {current_jumpbox_state})")
           print("5. Back")
 
           choice = input("Enter your choice: ")
@@ -96,7 +119,8 @@ def configure_menu():
           if choice == '1':
                add_command_menu()
           elif choice == '4':
-               set_jumpbox_usage()
+               env_manager.set_jumpbox_use()
+               current_jumpbox_state = env_manager.get_or_prompt_env_var('USE_JUMPBOX', 'False') # Update the current value
           elif choice == '5':
                return
           else:

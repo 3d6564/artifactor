@@ -1,8 +1,8 @@
 import os
-from .menu import print_ascii_art, main_menu, display_commands_menu, configure_menu
+from .menu import print_ascii_art, main_menu, display_commands_menu, configure_menu, initialize_menu
 from config import EnvManager
 from utils import HostManager
-from commands import CommandGenerator, ParallelExecutor
+from commands import CommandGenerator
 
 
 def main():
@@ -14,18 +14,7 @@ def main():
     file_path = 'host_list'
 
     # ------------------------ #
-    jumpbox_key_path = env_manager.get_or_prompt_env_var('JUMPBOX_KEY', "Enter the path to your jumpbox SSH key: ")
-    jumpbox_username = env_manager.get_or_prompt_env_var('JUMPBOX_USERNAME', "Enter the SSH username for the jumpbox: ")
-
-    target_key_path = env_manager.get_or_prompt_env_var('TARGET_KEY', "Enter the path to your target host SSH key: ")
-    target_username = env_manager.get_or_prompt_env_var('TARGET_USERNAME', "Enter the SSH username for the target hosts: ")
-    use_jumpbox = env_manager.get_or_prompt_env_var('USE_JUMPBOX', "Enter True or False to use a jumpbox: ")
-    if use_jumpbox not in ["True", "False"]:
-        use_jumpbox = input("Invalid input. Do you want to use a jumpbox? (True/False): ").strip()
-        env_manager.set_env_var('USE_JUMPBOX', use_jumpbox)
-    if use_jumpbox:
-        jumpbox = env_manager.get_or_prompt_env_var('JUMPBOX', "Enter the hostname or ip of a jumpbox: ")
-    
+    jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path = initialize_menu()
 
     # ------------------------ #
     hosts = host_manager.load_hosts(file_path)
@@ -33,13 +22,12 @@ def main():
 
     while True:
         choice = main_menu()
-        print('\n')
 
         if choice == '1':
             new_host = input("Enter the hostname or IP address: ")
             if new_host not in hosts:
                 hosts.append(new_host)
-                print(f"Host {new_host} added.")
+                print(f"\033[1;32mHost {new_host} added.\033[0m")
             else:
                 print(f"Host {new_host} is already in the list.")
         elif choice == '2':
@@ -56,8 +44,8 @@ def main():
 
             command_name = display_commands_menu()
             cmd_generator.run_command(command_name, 
-                                      hosts, 
-                                      jumpbox, 
+                                      hosts,
+                                      jumpbox,
                                       jumpbox_username, 
                                       jumpbox_key_path, 
                                       target_username, 
