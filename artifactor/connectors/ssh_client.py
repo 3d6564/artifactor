@@ -39,17 +39,17 @@ class SSHClient:
             return host, str(e)
         
     def detect_os(self, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
-        os_command = 'uname'  # Basic command to identify the OS type
+        # identify the OS type
+        os_command = 'uname -s'
         host, output = self.run_command_on_host(os_command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)
         if 'Linux' in output:
             # check between different linux distributions
             os_command = 'cat /etc/os-release'
             host, output = self.run_command_on_host(os_command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)
-
-            if 'Debian' in output or 'Ubuntu' in output:
-                return 'debian'
-            elif 'CentOS' in output or 'Red Hat' in output or 'Fedora' in output:
-                return 'centos'
+            if 'ID=' in output:
+                id_line = next(line for line in output.splitlines() if line.startswith('ID='))
+                os_type = id_line.split('=')[1].strip('"')
+                return os_type
         else:
             os_command = 'ver'  # Command to identify Windows OS
             host, output = self.run_command_on_host(os_command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path)

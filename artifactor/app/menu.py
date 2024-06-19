@@ -73,46 +73,42 @@ def modify_commands_menu():
      command_generator = CommandGenerator()
      while True:
           command_name = input("Enter the command name (no spaces) or exit: ")
-
           if command_name.lower() == 'exit':
                break
 
+          commands = {}
           while True:
-               os_option = input("Is this command for (1) Linux, (2) Windows, or (3) Both? Enter 1, 2, or 3: ")
-
-               if os_option in ('1','2','3'):
+               distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
+                              "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
+                              "Enter the distribution name (or type 'done' to finish): \033[0m").lower()
+               if distro == 'done':
                     break
+               
+               if distro in commands:
+                    print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
+                    continue
 
-          linux_command = None
-          windows_command = None
+               if command_generator.distribution_exists(distro):
+                    print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
 
-          if os_option == '1' or os_option == '3':
-               check_type = input("Is it general Linux (Y/N): ").strip().upper()
+               if not command_generator.distribution_exists(distro):
+                    confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
+                    if confirm == 'n':
+                         continue
 
-               if check_type == 'Y':
-                    linux_command = input("Enter the general Linux command: ")
-            
-               if check_type == 'N':                    
-                    debian_command = input("Enter the Debian-specific command (or press Enter to use the general Linux command): ")
-                    centos_command = input("Enter the CentOS-specific command (or press Enter to use the general Linux command): ")
-               if not debian_command:
-                    debian_command = linux_command
-               if not centos_command:
-                    centos_command = linux_command
-          if os_option == '2' or os_option == '3':
-               windows_command = input("Enter the Windows command: ")
+               command = input(f"Enter the command for {distro}: ")
+               confirm = input(f"You entered '{distro}' with the command '{command}'. Is that correct? (y/n): ").lower()
+               if confirm.lower() in ['yes', 'y']:
+                    if command == 'null':
+                         command = None
+                    commands[distro] = command
 
-          if linux_command or windows_command or debian_command or centos_command:
-               command_generator.modify_commands(command_name, linux_command, windows_command, debian_command, centos_command)
-               print(f"Command '{command_name}' added successfully.")
+          if commands:
+               command_generator.modify_commands(command_name, commands)
+               print(f"Command '{command_name}' added/updated successfully.")
                break
           else:
                print("Invalid option. No command added.")
-
-def set_jumpbox_usage():
-    env_manager = EnvManager()
-    env_manager.set_jumpbox_use()
-
 
 def configure_menu():
      env_manager = EnvManager()
