@@ -8,7 +8,7 @@ class ParallelExecutor:
         self.logger = Logger()
     
 
-    def execute_commands_in_parallel(self, command_func, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
+    def execute_commands_in_parallel(self, command_func, command, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
         if not hosts:
             print("No hosts available to run the command.")
             return {}
@@ -16,7 +16,14 @@ class ParallelExecutor:
         results = {}
         with ThreadPoolExecutor(max_workers=len(hosts)) as executor:
             future_to_host = {
-                executor.submit(command_func, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path): host for host in hosts
+                executor.submit(command_func, 
+                                command, 
+                                host, 
+                                jumpbox, 
+                                jumpbox_username, 
+                                jumpbox_key_path, 
+                                target_username, 
+                                target_key_path): host for host in hosts
             }
             for future in as_completed(future_to_host):
                 host = future_to_host[future]

@@ -1,0 +1,18 @@
+{
+    "get_processes": {
+        "linux": "ps aux",
+        "windows": "tasklist"
+    },
+    "get_users": {
+        "linux": "cat /etc/passwd",
+        "windows": "net user"
+    },
+    "get_system_info": {
+        "linux": "uname -a",
+        "windows": "systeminfo"
+    },
+    "get_hostname": {
+        "linux": "cat /etc/hostname",
+        "windows": null
+    }
+}

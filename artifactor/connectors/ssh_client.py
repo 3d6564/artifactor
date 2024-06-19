@@ -15,7 +15,7 @@ class SSHClient:
     def run_command_on_host(self, command, host, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path):
         use_jumpbox = os.getenv('USE_JUMPBOX', 'False').lower() in ['true', '1', 't']
         try:
-            if use_jumpbox == True:
+            if use_jumpbox:
                 jumpbox_client = self.create_ssh_client(jumpbox, jumpbox_username, jumpbox_key_path)
                 jumpbox_transport = jumpbox_client.get_transport()
                 dest_addr = (host, 22)
@@ -28,11 +28,9 @@ class SSHClient:
             stdin, stdout, stderr = target_client.exec_command(command)
             output = stdout.read() + stderr.read()
 
-            if use_jumpbox == True:
-                target_client.close()
+            target_client.close()
+            if use_jumpbox:
                 jumpbox_client.close()
-            else:
-                target_client.close()
 
             return host, output.decode()
         except Exception as e:
