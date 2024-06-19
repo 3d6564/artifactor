@@ -5,7 +5,7 @@ from config import EnvManager
 def print_ascii_art():
     art = """\
     \033[1;32m
-                   __  .__   ____              __                
+                   __   __   ____              __                
     _____ ________/  |_|__| /  __\____   _____/  |__  _________
     \__  \\\_  __ \   __\  ||   __\\\__ \ /  ___\   __\/ _ \     \\
      / __ \|  | \/|  | |  ||  |   / __ \\  (___|  |  ( <_> )  |\/
@@ -69,46 +69,82 @@ def display_commands_menu():
                 return None
         print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
 
+def copy_command_menu(command_generator):
+    while True:
+        command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
+        if command_name.lower() == 'back':
+            break
+        if command_name not in command_generator.commands:
+            print(f"Command '{command_name}' does not exist.")
+            continue
+
+        src_distro = input("Enter the source distribution: ")
+        if src_distro not in command_generator.commands[command_name]:
+            print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
+            continue
+
+        dest_distro = input("Enter the destination distribution: ")
+        command_generator.commands[command_name][dest_distro] = command_generator.commands[command_name][src_distro]
+        command_generator.save_commands()
+        print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
+        break
+
 def modify_commands_menu():
      command_generator = CommandGenerator()
+
      while True:
-          command_name = input("Enter the command name (no spaces) or exit: ")
-          if command_name.lower() == 'exit':
-               break
+          print("\nAdd or Update Command Options:")
+          print("1. Add or update a command")
+          print("2. Clone command from a distribution")
+          print("3. back")
 
-          commands = {}
-          while True:
-               distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
-                              "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
-                              "Enter the distribution name (or type 'done' to finish): \033[0m").lower()
-               if distro == 'done':
+          choice = input("Enter your choice: ")
+
+          if choice == '1':
+               command_name = input("Enter the command name (no spaces) or exit: ")
+               if command_name.lower() == 'exit':
                     break
-               
-               if distro in commands:
-                    print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
-                    continue
 
-               if command_generator.distribution_exists(distro):
-                    print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
-
-               if not command_generator.distribution_exists(distro):
-                    confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
-                    if confirm == 'n':
+               commands = {}
+               while True:
+                    distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
+                                   "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
+                                   "Enter the distribution name (or type 'done' to finish): \033[0m").lower()
+                    if distro == 'done':
+                         break
+                    
+                    if distro in commands:
+                         print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
                          continue
 
-               command = input(f"Enter the command for {distro}: ")
-               confirm = input(f"You entered '{distro}' with the command '{command}'. Is that correct? (y/n): ").lower()
-               if confirm.lower() in ['yes', 'y']:
-                    if command == 'null':
-                         command = None
-                    commands[distro] = command
+                    if command_generator.distribution_exists(distro):
+                         print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
 
-          if commands:
-               command_generator.modify_commands(command_name, commands)
-               print(f"Command '{command_name}' added/updated successfully.")
-               break
+                    if not command_generator.distribution_exists(distro):
+                         confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
+                         if confirm == 'n':
+                              continue
+
+                    command = input(f"Enter the command for {distro}: ")
+                    use_sudo = input(f"Does this command require sudo? (yes/no): ").strip().lower() == "yes"
+                    confirm = input(f"You entered '{distro}' with the command '{command}'. Is that correct? (y/n): ").lower()
+                    if confirm.lower() in ['yes', 'y']:
+                         if command == 'null':
+                              command = None
+                         commands[distro] = {"cmd": command if command else None, "sudo": use_sudo}
+
+               if commands:
+                    command_generator.modify_commands(command_name, commands)
+                    print(f"Command '{command_name}' added/updated successfully.")
+                    break
+               else:
+                    print("Invalid option. No command added.")
+          elif choice == '2':
+               copy_command_menu(command_generator)
+          elif choice == '3':
+               return
           else:
-               print("Invalid option. No command added.")
+               print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
 
 def configure_menu():
      env_manager = EnvManager()

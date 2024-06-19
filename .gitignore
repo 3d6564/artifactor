@@ -1,5 +1,5 @@
 .env
-host_list
+host_file
 commands.json
 *.backup
 logs/*

@@ -8,7 +8,7 @@ class ParallelExecutor:
         self.logger = Logger()
     
 
-    def execute_commands_in_parallel(self, command_func, command, command_name, hosts, jumpbox, jumpbox_username, jumpbox_key_path, target_username, target_key_path, os_type):
+    def execute_commands_in_parallel(self, command_func, command, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
         if not hosts:
             print("No hosts available to run the command.")
             return {}
@@ -20,10 +20,12 @@ class ParallelExecutor:
                                 command, 
                                 host, 
                                 jumpbox, 
-                                jumpbox_username, 
-                                jumpbox_key_path, 
-                                target_username, 
-                                target_key_path): host for host in hosts
+                                jumpbox_username=jumpbox_username, 
+                                target_username=target_username, 
+                                jumpbox_password=jumpbox_password, 
+                                jumpbox_key_path=jumpbox_key_path, 
+                                target_password=target_password, 
+                                target_key_path=target_key_path): host for host in hosts
             }
             for future in as_completed(future_to_host):
                 host = future_to_host[future]

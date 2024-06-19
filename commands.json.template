@@ -1,18 +1,122 @@
 {
     "get_processes": {
-        "linux": "ps aux",
-        "windows": "tasklist"
+        "linux": {
+            "cmd": "ps aux",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "tasklist",
+            "sudo": false
+        }
     },
     "get_users": {
-        "linux": "cat /etc/passwd",
-        "windows": "net user"
+        "linux": {
+            "cmd": "cat /etc/passwd",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "net user",
+            "sudo": false
+        }
     },
     "get_system_info": {
-        "linux": "uname -a",
-        "windows": "systeminfo"
+        "linux": {
+            "cmd": "uname -a",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "systeminfo",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "uname -a",
+            "sudo": false
+        }
     },
     "get_hostname": {
-        "linux": "cat /etc/hostname",
-        "windows": null
+        "linux": {
+            "cmd": "cat /etc/hostname",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": null,
+            "sudo": false
+        }
+    },
+    "get_logins": {
+        "debian": {
+            "cmd": "cat /var/log/auth.log",
+            "sudo": true
+        },
+        "centos": {
+            "cmd": "cat /var/log/secure",
+            "sudo": true
+        },
+        "linux": {
+            "cmd": null,
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /var/log/auth.log",
+            "sudo": true
+        }
+    },
+    "get_login_accepted_keys": {
+        "linux": {
+            "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
+            "sudo": true
+        },
+        "windows": {
+            "cmd": null,
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
+            "sudo": true
+        },
+        "debian": {
+            "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
+            "sudo": true
+        }
+    },
+    "get_login_failed_pw": {
+        "linux": {
+            "cmd": null,
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "cat /var/log/auth.log | grep \"Failed password\"",
+            "sudo": true
+        },
+        "centos": {
+            "cmd": "cat /var/log/secure | grep \"Failed password\"",
+            "sudo": true
+        },
+        "windows": {
+            "cmd": null,
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /var/log/auth.log | grep \"Failed password\"",
+            "sudo": true
+        }
+    },
+    "get_login_accepted_pw": {
+        "linux": {
+            "cmd": null,
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "cat /var/log/auth.log | grep \"Accepted password\"",
+            "sudo": true
+        },
+        "centos": {
+            "cmd": "cat /var/log/secure | grep \"Accepted password\"",
+            "sudo": true
+        },
+        "windows": {
+            "cmd": null,
+            "sudo": false
+        }
     }
 }

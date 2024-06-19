@@ -11,7 +11,7 @@ def main():
     cmd_generator = CommandGenerator()
     
     print_ascii_art()
-    file_path = 'host_list'
+    file_path = 'host_file'
 
     # ------------------------ #
     jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path = initialize_menu()
@@ -47,8 +47,8 @@ def main():
                                       hosts,
                                       jumpbox,
                                       jumpbox_username, 
-                                      jumpbox_key_path, 
                                       target_username, 
+                                      jumpbox_key_path, 
                                       target_key_path)
 
         elif choice == '5':
