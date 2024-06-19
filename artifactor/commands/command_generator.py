@@ -36,9 +36,16 @@ class CommandGenerator:
             else:
                 raise ValueError(f"Command '{command_name}' not found for OS type '{os_type}'")
 
-    def add_command(self, command_name, linux_command, windows_command):
+    def modify_commands(self, command_name, linux_command, windows_command, debian_command=None, centos_command=None):
+        if command_name in self.commands:
+            print(f"Updating existing command '{command_name}'")
+        else:
+            print(f"Adding new command '{command_name}'")
+        
         self.commands[command_name] = {
             "linux": linux_command,
+            "debian": debian_command if debian_command else linux_command,
+            "centos": centos_command if centos_command else linux_command,
             "windows": windows_command
         }
         self.save_commands()
