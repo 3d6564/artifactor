@@ -38,7 +38,6 @@ def main_menu():
      options = [
         "Add a host",
         "Load hosts from file",
-        "Save hosts to file",
         "Run command on hosts",
         "Configure",
         "Exit"
@@ -50,7 +49,7 @@ def main_menu():
 
      return input("Enter your choice: ")
 
-def display_commands_menu(env_manager):
+def display_commands_menu():
      command_generator = CommandGenerator()
      commands = list(command_generator.commands.keys())
 
