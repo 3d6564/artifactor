@@ -1,6 +1,6 @@
 import os
 from commands import CommandGenerator
-from config import EnvManager
+
 
 def print_ascii_art():
     art = """\
@@ -16,8 +16,7 @@ def print_ascii_art():
     """
     print(art)
 
-def initialize_menu():
-     env_manager = EnvManager()
+def initialize_menu(env_manager):
      print("\nInitializing environment...\n")
 
      # Jumpbox
@@ -36,19 +35,22 @@ def initialize_menu():
      return jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path
 
 def main_menu():
+     options = [
+        "Add a host",
+        "Load hosts from file",
+        "Save hosts to file",
+        "Run command on hosts",
+        "Configure",
+        "Exit"
+     ]
+
      print("\nSelect an option:")
-     print("1. Add a host")
-     print("2. Load hosts from file")
-     print("3. Save hosts to file")
-     print("4. Run command on hosts")
-     print("5. Configure")
-     print("6. Exit")
-     
-     choice = input("Enter your choice: ")
+     for idx, option in enumerate(options, 1):
+          print(f"{idx}. {option}")
 
-     return choice
+     return input("Enter your choice: ")
 
-def display_commands_menu():
+def display_commands_menu(env_manager):
      command_generator = CommandGenerator()
      commands = list(command_generator.commands.keys())
 
@@ -89,14 +91,13 @@ def copy_command_menu(command_generator):
         print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
         break
 
-def modify_commands_menu():
-     command_generator = CommandGenerator()
+def modify_commands_menu(command_generator):
 
      while True:
           print("\nAdd or Update Command Options:")
           print("1. Add or update a command")
           print("2. Clone command from a distribution")
-          print("3. back")
+          print("3. Back")
 
           choice = input("Enter your choice: ")
 
@@ -146,8 +147,7 @@ def modify_commands_menu():
           else:
                print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
 
-def configure_menu():
-     env_manager = EnvManager()
+def configure_menu(env_manager):
      command_generator = CommandGenerator()
      current_jumpbox_state = env_manager.get_or_prompt_env_var('USE_JUMPBOX', 'False')
 
@@ -162,7 +162,7 @@ def configure_menu():
           choice = input("Enter your choice: ")
 
           if choice == '1':
-               modify_commands_menu()
+               modify_commands_menu(command_generator)
           elif choice == '2':
                command_generator.load_commands()
           elif choice == '3':

@@ -14,7 +14,7 @@ def main():
     file_path = 'host_file'
 
     # ------------------------ #
-    jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path = initialize_menu()
+    jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path = initialize_menu(env_manager)
 
     # ------------------------ #
     hosts = host_manager.load_hosts(file_path)
@@ -52,7 +52,7 @@ def main():
                                       target_key_path)
 
         elif choice == '5':
-            configure_menu()
+            configure_menu(env_manager)
         elif choice == '6':
             break
         else:

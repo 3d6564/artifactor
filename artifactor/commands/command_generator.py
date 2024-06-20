@@ -1,9 +1,10 @@
 import json
 from connectors import SSHClient
 from .parallel_executor import ParallelExecutor
-
+from config import EnvManager
 
 class CommandGenerator:
+
     def __init__(self, commands_file='commands.json'):
         self.ssh_client = SSHClient()
         self.commands_file = commands_file
