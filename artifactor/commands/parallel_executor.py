@@ -15,7 +15,7 @@ class ParallelExecutor:
 
         results = {}
         with ThreadPoolExecutor(max_workers=len(hosts)) as executor:
-            print(f"Running {command} on hosts {hosts}")
+            print(f"Running {command} on hosts {hosts}...")
             future_to_host = {
                 executor.submit(command_func, 
                                 command, 
