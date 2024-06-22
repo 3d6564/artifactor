@@ -15,6 +15,7 @@ class ParallelExecutor:
 
         results = {}
         with ThreadPoolExecutor(max_workers=len(hosts)) as executor:
+            print(f"Running {command} on hosts {hosts}")
             future_to_host = {
                 executor.submit(command_func, 
                                 command, 
@@ -40,3 +41,6 @@ class ParallelExecutor:
                     self.logger.write_output(log_name, f"Error for {host}:\n{e}")
                     print(f"Host {host} error written to {log_name}")
         return results
+    
+    def shutdown_executor(self):
+        self.executor.shutdown(wait=True)
