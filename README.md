@@ -6,5 +6,5 @@ Help capture artifacts from remote hosts.
 
 - [ ] Restructure rest of utils folder
 - [ ] add more linux commands
-- [ ] add windows capability
+- [ ] add better windows capability
 - [ ] add more state awareness with classes
