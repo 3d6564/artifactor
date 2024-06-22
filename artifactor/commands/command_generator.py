@@ -28,7 +28,7 @@ class CommandGenerator:
 
         alternate_check = []
 
-        print("Running os-release...")
+        print("Running os checks...")
         output = self.parallel_executor.execute_commands_in_parallel(self.ssh_client.run_command_on_host,
                                                                      os_command, 
                                                                      command_name,
