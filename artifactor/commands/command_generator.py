@@ -70,7 +70,6 @@ class CommandGenerator:
                                   target_username=target_username, 
                                   jumpbox_key_path=jumpbox_key_path,
                                   target_key_path=target_key_path)
-        print(os_types)
 
         for host, os_type in os_types.items():
             if os_type == 'unknown':
