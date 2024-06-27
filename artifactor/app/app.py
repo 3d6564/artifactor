@@ -49,6 +49,10 @@ def main():
         elif choice == '4':
             configure_menu(env_manager)
         elif choice == '5':
+            for host in host_manager.hosts:
+                print(host)
+                cmd_generator.ping_ttl(host)
+        elif choice == '6':
             break
         else:
             print("\n\033[1;31mInvalid choice, please try again.\033[0m")

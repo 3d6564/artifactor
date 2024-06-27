@@ -8,17 +8,18 @@ class ParallelExecutor:
         self.logger = Logger()
     
 
-    def execute_commands_in_parallel(self, command_func, command, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
-        if not hosts:
+    def execute_commands_in_parallel(self, command_func, host_list, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+        if not host_list:
             print("No hosts available to run the command.")
             return {}
 
         results = {}
-        with ThreadPoolExecutor(max_workers=len(hosts)) as executor:
-            print(f"Running {command} on hosts {hosts}")
+        with ThreadPoolExecutor(max_workers=len(host_list)) as executor:
+            #print(f"Running {command} on hosts {hosts}...")
             future_to_host = {
                 executor.submit(command_func, 
-                                command, 
+                                values["command"], 
+                                values["os_type"],
                                 host, 
                                 jumpbox, 
                                 jumpbox_username=jumpbox_username, 
@@ -26,11 +27,11 @@ class ParallelExecutor:
                                 jumpbox_password=jumpbox_password, 
                                 jumpbox_key_path=jumpbox_key_path, 
                                 target_password=target_password, 
-                                target_key_path=target_key_path): host for host in hosts
+                                target_key_path=target_key_path): host for host, values in host_list.items()
             }
             for future in as_completed(future_to_host):
                 host = future_to_host[future]
-                log_name = self.logger.generate_log_name(host, command_name)
+                log_name = self.logger.generate_log_name(host, 'test')
                 try:
                     host, result = future.result()
                     results[host] = result

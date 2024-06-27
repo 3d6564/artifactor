@@ -40,6 +40,7 @@ def main_menu():
         "Load hosts from file",
         "Run command on hosts",
         "Configure",
+        "Run ping ttl test",
         "Exit"
      ]
 
@@ -132,6 +133,9 @@ def modify_commands_menu(command_generator):
                          if command == 'null':
                               command = None
                          commands[distro] = {"cmd": command if command else None, "sudo": use_sudo}
+
+                    print(f"\033[1;30mCommand '{command_name}' stored for '{distro}' with the command '{command}'. It will be written\n"
+                          "to the file when 'done'.\033[0m")
 
                if commands:
                     command_generator.modify_commands(command_name, commands)
