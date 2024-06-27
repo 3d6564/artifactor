@@ -7,6 +7,10 @@
         "windows": {
             "cmd": "tasklist",
             "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "ps aux",
+            "sudo": false
         }
     },
     "get_users": {
@@ -40,6 +44,10 @@
         },
         "windows": {
             "cmd": null,
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /etc/hostname",
             "sudo": false
         }
     },
@@ -117,6 +125,52 @@
         "windows": {
             "cmd": null,
             "sudo": false
+        }
+    },
+    "get_diskspace": {
+        "linux": {
+            "cmd": "df",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "df",
+            "sudo": false
+        }
+    },
+    "get_test": {
+        "win-winrm": {
+            "cmd": "whoami",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "whoami",
+            "sudo": false
+        }
+    },
+    "get_os": {
+        "linux": {
+            "cmd": "cat /etc/os-release",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "cat /etc/os-release",
+            "sudo": true
+        },
+        "centos": {
+            "cmd": "cat /etc/os-release",
+            "sudo": true
+        },
+        "windows": {
+            "cmd": "systeminfo",
+            "sudo": false
+        },
+        "win-winrm": {
+            "cmd": "systeminfo",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /etc/os-release",
+            "sudo": true
         }
     }
 }
