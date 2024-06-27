@@ -40,6 +40,7 @@ def main_menu():
         "Load hosts from file",
         "Run command on hosts",
         "Configure",
+        "Run ping ttl test",
         "Exit"
      ]
 
