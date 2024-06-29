@@ -10,6 +10,28 @@ Help capture artifacts from remote hosts. The intent is a lightweight, paralleli
 - Use password/key for each connection (password has limited testing)
 - Parallelized connections to each host
 
+## Setup
+
+Download the repository to your local device and make sure you have python install. Once it is downloaded, make sure to retrieve the required packages.
+
+```sh
+# clone the repo from online
+git clone https://github.com/3d6564/artifactor.git
+
+# install required libraries from requirements.txt
+pip install -r ./artifactor/requirements.txt
+```
+
+As long as Python is setup in your `PATH` you should be able to start it with the below.
+
+```sh
+# change to the artifactor directory
+cd ./artifactor
+
+# run artifactor, it will initialize if first time
+python artifactor
+```
+
 ## TODO
 
 - [ ] Restructure rest of utils folder
