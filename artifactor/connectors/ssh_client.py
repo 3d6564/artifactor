@@ -88,6 +88,8 @@ class SSHClient:
                         print('WinRM session created...')
                         # Check if the port forwarding was successful
                         output = winrm_session.run_cmd(command).std_out.decode()
+                        # Clean empty lines
+                        output = '\n'.join(line for line in output.splitlines() if line.strip())
                         #print('Result received...')
                 else:
                     channel = self.create_proxy_channel(jumpbox_client, host, jumpbox)

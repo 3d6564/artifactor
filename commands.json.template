@@ -11,6 +11,10 @@
         "ubuntu": {
             "cmd": "ps aux",
             "sudo": false
+        },
+        "win-winrm": {
+            "cmd": "tasklist",
+            "sudo": false
         }
     },
     "get_users": {
@@ -19,6 +23,14 @@
             "sudo": false
         },
         "windows": {
+            "cmd": "net user",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /etc/passwd",
+            "sudo": false
+        },
+        "win-winrm": {
             "cmd": "net user",
             "sudo": false
         }
@@ -133,6 +145,10 @@
             "sudo": false
         },
         "ubuntu": {
+            "cmd": "df",
+            "sudo": false
+        },
+        "debian": {
             "cmd": "df",
             "sudo": false
         }

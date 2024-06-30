@@ -14,8 +14,11 @@ class HostManager:
 
     def load_hosts(self):
         if os.path.exists(self.file_path):
+            print(f"Hosts loaded from {self.file_path} file...")
             with open(self.file_path, 'r') as file:
                 return [line.strip() for line in file.readlines()]
+        else: 
+            print(f"Hosts file {self.file_path} does not exist...")
         return []
 
     def save_hosts(self):

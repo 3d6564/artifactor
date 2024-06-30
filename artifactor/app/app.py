@@ -5,7 +5,7 @@ from commands import CommandGenerator
 
 
 def main():
-    file_path='host_file'
+    file_path = 'host_file'
     env_manager = EnvManager()
     host_manager = HostManager(file_path)
     cmd_generator = CommandGenerator()
@@ -16,8 +16,6 @@ def main():
     jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path = initialize_menu(env_manager)
 
     # ------------------------ #
-    print(f"Hosts loaded from {file_path} file...")
-    
 
     while True:
         choice = main_menu()

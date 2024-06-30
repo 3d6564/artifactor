@@ -27,11 +27,11 @@ class ParallelExecutor:
                                 jumpbox_password=jumpbox_password, 
                                 jumpbox_key_path=jumpbox_key_path, 
                                 target_password=target_password, 
-                                target_key_path=target_key_path): host for host, values in host_list.items()
+                                target_key_path=target_key_path): (host, values["command_name"]) for host, values in host_list.items()
             }
             for future in as_completed(future_to_host):
-                host = future_to_host[future]
-                log_name = self.logger.generate_log_name(host, 'test')
+                host, command_name = future_to_host[future]
+                log_name = self.logger.generate_log_name(host, command_name)
                 try:
                     host, result = future.result()
                     results[host] = result
