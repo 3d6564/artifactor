@@ -1,6 +1,7 @@
 import json
 import subprocess
 import re
+import shutil
 from connectors import SSHClient
 from config import EnvManager
 from .parallel_executor import ParallelExecutor
@@ -9,6 +10,7 @@ from .parallel_executor import ParallelExecutor
 class CommandGenerator:
 
     def __init__(self, commands_file='commands.json'):
+        self.commands_template = 'commands.json.template'
         self.ssh_client = SSHClient()
         self.commands_file = commands_file
         self.commands = self.load_commands()
@@ -19,7 +21,14 @@ class CommandGenerator:
             with open(self.commands_file, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            return {}
+            print(f"\033[1;33mCommands file {self.commands_file} does not exist... cloning template")
+            try:
+                shutil.copyfile(self.commands_template, self.commands_file)
+                with open(self.commands_file, 'r') as f:
+                    return json.load(f)
+            except:
+                print('\033[1;31mWarning: You do not have a commands file.')
+                return {}
 
     def save_commands(self):
         with open(self.commands_file, 'w') as f:
@@ -41,86 +50,107 @@ class CommandGenerator:
                     else:
                         return {'os_type': 'unknown', 'ttl': ttl_value}
                 else:
-                    return 'TTL not found in the ping response.'
+                    return {'os_type': 'unknown', 'ttl': 'unknown'}
             else:
                 return f'Ping failed: {result.stderr}'
         except Exception as e:
             return f'An error occurred: {e}'
 
+    def execute_commands(self, host_dict, jumpbox, jumpbox_username, target_username, jumpbox_key_path=None, target_key_path=None, jumpbox_password=None, target_password=None):
+        """Execute the specified command on all hosts in parallel."""
+        output = self.parallel_executor.execute_commands_in_parallel(
+            self.ssh_client.run_command_on_host,
+            host_dict,
+            jumpbox,
+            jumpbox_username=jumpbox_username,
+            target_username=target_username,
+            jumpbox_password=jumpbox_password,
+            jumpbox_key_path=jumpbox_key_path,
+            target_password=target_password,
+            target_key_path=target_key_path
+        )
+        return output
+
     def detect_os(self, hosts, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
-        #command_name = 'get_os'
-        host_dict = {}
+        """
+        Detect the OS type of each host using ping TTL values and get_os function
         
-        for host in hosts:
-            host_dict[host] = self.ping_ttl(host)
+        """
+        print("Detecting OS's...")
+        self.commands = self.load_commands()
+        host_dict = {host: self.ping_ttl(host) for host in hosts}
+        known_dict = {}
+        unknown_dict = {}
 
         for host, values in host_dict.items():
-            values["command"] = self.commands.get('get_os')[values["os_type"]]["cmd"]
-
-        output = self.parallel_executor.execute_commands_in_parallel(self.ssh_client.run_command_on_host,
-                                                                     host_dict,
-                                                                     jumpbox, 
-                                                                     jumpbox_username=jumpbox_username, 
-                                                                     target_username=target_username,
-                                                                     jumpbox_key_path=jumpbox_key_path,
-                                                                     target_key_path=target_key_path)
+            try:
+                os_type = values["os_type"]
+                values["command"] = self.commands.get('get_os').get(os_type).get("cmd")
+                values["command_name"] = 'get_os'
+                known_dict[host] = values
+            except:
+                os_type = 'unknown'
+                values["os_type"] = os_type
+                unknown_dict[host] = values
+            
+        output = self.execute_commands(known_dict,
+                                       jumpbox,
+                                       jumpbox_username=jumpbox_username, 
+                                       target_username=target_username,
+                                       jumpbox_key_path=jumpbox_key_path,
+                                       target_key_path=target_key_path)
+        
         for key, value in output.items():
-            #if 'Windows' in value:
-            if 'windows' in host_dict[key].values():
+            os_type = host_dict[key].get('os_type')
+            if os_type == 'windows':
                 print(f'Windows was detected {key} by ping ttl...')
                 if 'OS Name:' in value:
                     id_line = next(line for line in value.splitlines() if line.startswith('OS Name:'))
                     if 'Microsoft Windows' in id_line:
-                        output[key] = 'win-winrm'
+                        host_dict[key]['os_type'] = 'win-winrm'
                     else:
-                        output[key] = id_line.split(':', 1)[1].strip()
+                        host_dict[key]['os_type'] = id_line.split(':', 1)[1].strip()
                 else:
                     print('OS Name not detected for the Windows host...')
-            elif 'linux' in host_dict[key].values():
+            elif os_type == 'linux':
                 print(f'Linux was detected on {key} by ping ttl...')
                 if 'ID=' in value:
                     id_line = next(line for line in value.splitlines() if line.startswith('ID='))
-                    output[key] = id_line.split('=')[1].strip('"')
-            
+                    host_dict[key]['os_type'] = id_line.split('=')[1].strip('"')
             else:
-                print("Error.........")
-
-        return output
+                print(f"Unknown OS detected for {key}.")
+        return host_dict
 
     def run_command(self, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_key_path, target_key_path):
-        self.commands = self.load_commands()
-        print("Detecting OS's...")
-        os_types = self.detect_os(hosts, 
+        host_dict = self.detect_os(hosts, 
                                   jumpbox, 
                                   jumpbox_username=jumpbox_username, 
                                   target_username=target_username, 
                                   jumpbox_key_path=jumpbox_key_path,
                                   target_key_path=target_key_path)
-        
-        host_dict = {}
-        
-        for host in os_types:
-            host_dict[host] = {"os_type" : os_types[host]}
 
         for host, values in host_dict.items():
-            values["command"] = self.commands.get(command_name)[values["os_type"]]["cmd"]
+            try:
+                values["command"] = self.commands.get(command_name).get(values["os_type"]).get("cmd")
+            except:
+                values["command"] = None
+            values["command_name"] = command_name
+            if values["command"] is None:
+                print(f"\033[1:31m{command_name} not found for {values["os_type"]} on host {host}.. \n"
+                    "Please add it to your commands file.\033[0m")
 
-        for host, os_type in os_types.items():
-            if 'unknown' in os_type:
+        for host, values in host_dict.items():
+            if 'unknown' in values:
                 print(f"Could not determine the OS of {host}. Skipping...")
                 continue
-        results = self.parallel_executor.execute_commands_in_parallel(self.ssh_client.run_command_on_host, 
-                                                                    host_dict, 
-                                                                    jumpbox, 
-                                                                    jumpbox_username=jumpbox_username, 
-                                                                    target_username=target_username, 
-                                                                    jumpbox_key_path=jumpbox_key_path, 
-                                                                    target_key_path=target_key_path)
-        return results
-        # else:
-        #     print(f"\033[1;31mCommand \"{command_name}\" not found for OS type \"{os_type}\"\033[0m")
 
-        # return None
+        results = self.execute_commands(host_dict, 
+                                        jumpbox, 
+                                        jumpbox_username=jumpbox_username, 
+                                        target_username=target_username, 
+                                        jumpbox_key_path=jumpbox_key_path, 
+                                        target_key_path=target_key_path)
+        return results
 
     def modify_commands(self, command_name, commands):
         if command_name in self.commands:

@@ -1,8 +1,10 @@
 import os
+import shutil
 
 class HostManager:
-    def __init__(self, file_path):
-        self.file_path = file_path
+    def __init__(self, hosts_file='host_file'):
+        self.host_template = 'host_file.template'
+        self.hosts_file = hosts_file
         self.hosts = self.load_hosts()
 
     def add_host(self, host):
@@ -13,12 +15,20 @@ class HostManager:
         return False
 
     def load_hosts(self):
-        if os.path.exists(self.file_path):
-            with open(self.file_path, 'r') as file:
-                return [line.strip() for line in file.readlines()]
-        return []
+        try:
+            with open(self.hosts_file, 'r') as f:
+                return [line.strip() for line in f.readlines() if line.strip()]
+        except FileNotFoundError:
+            print(f"\033[1;33mHosts file {self.hosts_file} does not exist... cloning template")
+            try:
+                shutil.copyfile(self.host_template, self.hosts_file)
+                with open(self.hosts_file, 'r') as f:
+                    return [line.strip() for line in f.readlines() if line.strip()]
+            except:
+                print('\033[1;31mWarning: You do not have a hosts file.')
+            return []
 
     def save_hosts(self):
-        with open(self.file_path, 'w') as file:
+        with open(self.hosts_file, 'w') as file:
             for host in self.hosts:
                 file.write(f"{host}\n")
