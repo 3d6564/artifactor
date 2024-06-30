@@ -1,6 +1,7 @@
 import json
 import subprocess
 import re
+import shutil
 from connectors import SSHClient
 from config import EnvManager
 from .parallel_executor import ParallelExecutor
@@ -9,6 +10,7 @@ from .parallel_executor import ParallelExecutor
 class CommandGenerator:
 
     def __init__(self, commands_file='commands.json'):
+        self.commands_template = 'commands.json.template'
         self.ssh_client = SSHClient()
         self.commands_file = commands_file
         self.commands = self.load_commands()
@@ -19,7 +21,14 @@ class CommandGenerator:
             with open(self.commands_file, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            return {}
+            print(f"\033[1;33mCommands file {self.commands_file} does not exist... cloning template")
+            try:
+                shutil.copyfile(self.commands_template, self.commands_file)
+                with open(self.commands_file, 'r') as f:
+                    return json.load(f)
+            except:
+                print('\033[1;31mWarning: You do not have a commands file.')
+                return {}
 
     def save_commands(self):
         with open(self.commands_file, 'w') as f:
@@ -41,7 +50,7 @@ class CommandGenerator:
                     else:
                         return {'os_type': 'unknown', 'ttl': ttl_value}
                 else:
-                    return 'TTL not found in the ping response.'
+                    return {'os_type': 'unknown', 'ttl': 'unknown'}
             else:
                 return f'Ping failed: {result.stderr}'
         except Exception as e:
@@ -70,13 +79,21 @@ class CommandGenerator:
         print("Detecting OS's...")
         self.commands = self.load_commands()
         host_dict = {host: self.ping_ttl(host) for host in hosts}
+        known_dict = {}
+        unknown_dict = {}
 
         for host, values in host_dict.items():
-            os_type = values["os_type"]
-            values["command"] = self.commands.get('get_os').get(os_type).get("cmd")
-            values["command_name"] = 'get_os'
-
-        output = self.execute_commands(host_dict,
+            try:
+                os_type = values["os_type"]
+                values["command"] = self.commands.get('get_os').get(os_type).get("cmd")
+                values["command_name"] = 'get_os'
+                known_dict[host] = values
+            except:
+                os_type = 'unknown'
+                values["os_type"] = os_type
+                unknown_dict[host] = values
+            
+        output = self.execute_commands(known_dict,
                                        jumpbox,
                                        jumpbox_username=jumpbox_username, 
                                        target_username=target_username,
@@ -119,7 +136,7 @@ class CommandGenerator:
                 values["command"] = None
             values["command_name"] = command_name
             if values["command"] is None:
-                print(f"\033[1:31m{command_name} not found for {values["os_type"]}.. \n"
+                print(f"\033[1:31m{command_name} not found for {values["os_type"]} on host {host}.. \n"
                     "Please add it to your commands file.\033[0m")
 
         for host, values in host_dict.items():

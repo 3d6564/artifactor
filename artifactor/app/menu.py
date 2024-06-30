@@ -6,8 +6,8 @@ from commands import CommandGenerator
 
 def print_ascii_art():
      fonts = ['3-d','alligator','banner','big','bigchief',
-              'block','catwalk','coinstak','colossal','cosmic',
-              'digital','doom','lean','linux','lockergnome',
+              'catwalk','coinstak','colossal',
+              'doom','lean','linux','lockergnome',
               'nancyj','ntgreek','peaks','rowancap','shadow']
      random_font = random.choice(fonts)
      art = pyfiglet.figlet_format("artifactor", font=random_font).rstrip()
@@ -24,24 +24,6 @@ def print_ascii_art():
            colored('(', line2_color) + 
            colored(art_line3, line3_color) + 
            colored(')', line2_color))
-
-def initialize_menu(env_manager):
-     print("\nInitializing environment...\n")
-
-     # Jumpbox
-     if env_manager.get_env_var('USE_JUMPBOX') is None:
-          env_manager.set_jumpbox_use()
-
-     if env_manager.get_env_var('USE_JUMPBOX') == 'Y':
-          jumpbox = env_manager.get_or_prompt_env_var('JUMPBOX', "Enter the hostname or ip of a jumpbox: ")
-          jumpbox_username = env_manager.get_or_prompt_env_var('JUMPBOX_USERNAME', "Enter the SSH username for the jumpbox: ")
-          jumpbox_key_path = env_manager.get_or_prompt_env_var('JUMPBOX_KEY', "Enter the path to your jumpbox SSH key: ")
-
-     # Target Host
-     target_username = env_manager.get_or_prompt_env_var('TARGET_USERNAME', "Enter the SSH username for the targets: ")
-     target_key_path = env_manager.get_or_prompt_env_var('TARGET_KEY', "Enter the path to your target SSH key: ")
-     
-     return jumpbox, jumpbox_username, jumpbox_key_path,  target_username, target_key_path
 
 def main_menu():
      options = [
@@ -64,21 +46,24 @@ def display_commands_menu():
      commands = list(command_generator.commands.keys())
 
      while True:
-        print("Select a command to run:")
-        for idx, command in enumerate(commands, 1):
-            print(f"{idx}. {command}")
-        print(f"{len(commands) + 1}. Back")
+          if commands:
+               print("Select a command to run:")
+               for idx, command in enumerate(commands, 1):
+                    print(f"{idx}. {command}")
+          else:
+               print("No commands available.")
+               
+          print(f"{len(commands) + 1}. back")
 
-        choice = input("Enter your choice: ")
+          choice = input("Enter your choice: ")
 
-        if choice.isdigit():
-            choice = int(choice)
-            if 1 <= choice <= len(commands):
-                command_name = commands[choice - 1]
-                return command_name
-            elif choice == len(commands) + 1:
-                return None
-        print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
+          if choice.isdigit():
+               choice = int(choice)
+               if 1 <= choice <= len(commands):
+                    return commands[choice - 1]
+               elif choice == len(commands) + 1:
+                    return None
+          print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
 
 def copy_command_menu(command_generator):
     while True:
