@@ -136,7 +136,7 @@ class CommandGenerator:
                 values["command"] = None
             values["command_name"] = command_name
             if values["command"] is None:
-                print(f"\033[1:31m{command_name} not found for {values["os_type"]} on host {host}.. \n"
+                print(f"\033[1;31m{command_name} not found for {values['os_type']} on host {host}.. \n" +
                     "Please add it to your commands file.\033[0m")
 
         for host, values in host_dict.items():
