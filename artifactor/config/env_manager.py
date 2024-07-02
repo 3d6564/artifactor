@@ -7,19 +7,23 @@ class EnvManager:
         self.env_vars = {
             'USE_JUMPBOX': None,
             'USE_PORT_FORWARD': None,
+            'USE_JUMPBOX_PASSWORD': None,
+            'USE_TARGET_PASSWORD': None,
             'JUMPBOX': None,
-            'JUMPBOX_USERNAME': None,
             'JUMPBOX_KEY': None,
+            'JUMPBOX_USERNAME': None,
             'JUMPBOX_PASSWORD': None,
-            'TARGET_USERNAME': None,
             'TARGET_KEY': None,
-            'TARGET_PASSWORD': None
+            'TARGET_USERNAME': None,
+            'TARGET_PASSWORD': None,
+            'WIN_USERNAME': None,
+            'WIN_PASSWORD': None
         }
         self.load_environment()
         self.check_and_create_env_file()
 
     def load_environment(self):
-        load_dotenv(self.env_file, override=True)
+        self.env_vars = dotenv_values(self.env_file)
 
     def check_and_create_env_file(self):
         """

@@ -5,6 +5,7 @@ import winrm
 from contextlib import closing
 from config import EnvManager
 
+       
 class SSHClient:
 
     def create_ssh_client(self, hostname, username, password=None, key_path=None, proxy_command=None):
@@ -14,16 +15,16 @@ class SSHClient:
     
         if proxy_command:
             if password:
-                client.connect(**connect_args, password=password, sock=proxy_command)
+                client.connect(**connect_args, password=password, sock=proxy_command, look_for_keys=False)
             elif key_path:
-                client.connect(**connect_args, key_filename=key_path, sock=proxy_command)
+                client.connect(**connect_args, key_filename=key_path, sock=proxy_command, look_for_keys=False)
             else:
                 raise ValueError("Either password or key_path must be provided for authentication with proxy_command")
         else:
             if password:
-                client.connect(**connect_args, password=password)
+                client.connect(**connect_args, password=password, look_for_keys=False)
             elif key_path:
-                client.connect(**connect_args, key_filename=key_path)
+                client.connect(**connect_args, key_filename=key_path, look_for_keys=False)
             else:
                 raise ValueError("Either password or key_path must be provided for authentication")
         
@@ -63,14 +64,25 @@ class SSHClient:
         stdin, stdout, stderr = client.exec_command(command)
         return (stdout.read() + stderr.read()).decode()
 
-    def run_command_on_host(self, command, os_type, host, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def run_command_on_host(self, command, os_type, host, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
         env_manager = EnvManager()
         use_jumpbox = env_manager.get_env_var('USE_JUMPBOX').lower() in ['y']
         use_port_forward = env_manager.get_env_var('USE_PORT_FORWARD').lower() in ['y']
+        use_jumpbox_password = env_manager.get_env_var('USE_JUMPBOX_PASSWORD').lower() in ['y']
+        use_target_password = env_manager.get_env_var('USE_TARGET_PASSWORD').lower() in ['y']
         win_username = env_manager.get_env_var('WIN_USERNAME')
         win_password = env_manager.get_env_var('WIN_PASSWORD')
 
         output = None
+
+        if use_jumpbox_password:
+            jumpbox_password = env_manager.get_env_var('JUMPBOX_PASSWORD')
+        if not use_jumpbox_password:
+            jumpbox_key_path = env_manager.get_env_var('JUMPBOX_KEY')
+        if use_target_password:
+            target_password = env_manager.get_env_var('TARGET_PASSWORD')
+        if not use_target_password:
+            target_key_path = env_manager.get_env_var('TARGET_KEY')
 
         try:
             if use_jumpbox:
@@ -118,6 +130,7 @@ class SSHClient:
                                                            target_username, 
                                                            password=target_password, 
                                                            key_path=target_key_path)
+                    print('SSH session created...')
                     output = self.execute_command(target_client, command)
             try:
                 target_client.close()

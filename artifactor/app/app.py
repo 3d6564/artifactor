@@ -1,66 +1,105 @@
 import os
-from .menu import print_ascii_art, main_menu, display_commands_menu, configure_menu
+import json
+import subprocess
+from cmd import Cmd
+from .menu import ConfigureCmd, RunMenuCmd
 from config import EnvManager, HostManager
 from commands import CommandGenerator
 
 
-def main():
-    print_ascii_art()
+class Artifactor(Cmd):
+    prompt = 'artc> '
+    intro = '\nwelcome to artifactor. type ? to list options'
 
-    print("\nInitializing environment...\n")
+    def __init__(self):
+        super().__init__()
 
-    # initialize environment
-    env_manager = EnvManager()
-    env_manager.initialize_env()
+        print("\nInitializing environment...\n")
 
-    # initialize hosts
-    host_manager = HostManager()
-    if host_manager.hosts:
-        print("\033[1;32mHosts have been initialized.\033[0m")
+        # initialize environment
+        self.env_manager = EnvManager()
+        self.host_manager = HostManager()
+        self.cmd_generator = CommandGenerator()
+        self.initialize_environment()
 
-    # initialize commands
-    cmd_generator = CommandGenerator()
-    if cmd_generator.commands:
-        print("\033[1;32mCommands have been initialized.\033[0m")
+    def initialize_environment(self):
+        self.env_manager.initialize_env()
+        if self.host_manager.hosts:
+            print("\033[1;32mHosts have been initialized.\033[0m")
+        if self.cmd_generator.commands:
+            print("\033[1;32mCommands have been initialized.\033[0m")
 
-    
-    while True:
-        choice = main_menu()
-
-        if choice == '1':
-            new_host = input("Enter the hostname or IP address: ")
-            if host_manager.add_host(new_host):
-                print(f"\033[1;32mHost {new_host} added. Hosts saved to {host_manager.hosts_file}.\033[0m")
-            else:
-                print(f"Host {new_host} is already in the list.")
-        elif choice == '2':
-            host_manager.hosts_file = input("Enter the file path and name (path/to/file): ")
-            host_manager.hosts = host_manager.load_hosts()
-            print(f"\033[1;32mHosts loaded from {host_manager.hosts_file}: {host_manager.hosts}\033[0m")
-        elif choice == '3':
-            if not host_manager.hosts:
-                print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
-                continue
-
-            command_name = display_commands_menu()
-            if command_name:
-                cmd_generator.run_command(command_name, 
-                                        host_manager.hosts,
-                                        env_manager.env_vars.get('JUMPBOX'),
-                                        env_manager.env_vars.get('JUMPBOX_USERNAME'), 
-                                        env_manager.env_vars.get('TARGET_USERNAME'), 
-                                        env_manager.env_vars.get('JUMPBOX_KEY'), 
-                                        env_manager.env_vars.get('TARGET_KEY'))
-
-        elif choice == '4':
-            configure_menu(env_manager)
-        elif choice == '5':
-            for host in host_manager.hosts:
-                print(f"{host}: {cmd_generator.ping_ttl(host)}")
-        elif choice == '6':
-            break
+    def do_add(self, arg):
+        'Add a host: add <hostname_or_ip>'
+        new_host = arg.strip()
+        if new_host == "":
+            print(f"Argument was empty.")
+        elif self.host_manager.add_host(new_host):
+            print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
         else:
-            print("\n\033[1;31mInvalid choice, please try again.\033[0m")
+            print(f"Host {arg} is already in the list.")
 
-if __name__ == "__main__":
-    main()
+    def do_load(self, arg):
+        'Load hosts from file: load [path/to/file]'
+        self.host_manager.hosts_file = arg.strip() if arg else self.host_manager.hosts_file
+        self.host_manager.hosts = self.host_manager.load_hosts()
+        print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
+
+    def do_run(self, arg):
+        'Run commands on hosts: run [command_name]'       
+        command_name = arg.strip() if arg else None
+
+        if not command_name:
+            commands_menu = RunMenuCmd(self.cmd_generator)
+            commands_menu.cmdloop()
+            command_name = commands_menu.selected_command
+
+        if not command_name:
+            print("No command selected.")
+            return
+
+        if not self.host_manager.hosts:
+            print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
+            return
+
+        if command_name:
+            self.cmd_generator.run_command(
+                command_name,
+                self.host_manager.hosts,
+                self.env_manager.env_vars.get('JUMPBOX'),
+                self.env_manager.env_vars.get('JUMPBOX_USERNAME'),
+                self.env_manager.env_vars.get('TARGET_USERNAME'),
+                self.env_manager.env_vars.get('JUMPBOX_KEY'),
+                self.env_manager.env_vars.get('TARGET_KEY')
+            )
+
+    def do_configure(self, arg):
+        # 'Configure settings: configure <setting> <value>'
+        # if arg:
+        #     setting, value = arg.split()
+        #     if setting in self.settings:
+        #         self.settings[setting] = int(value)
+        #         print(f"Updated {setting} to {value}")
+        #     else:
+        #         print(f"Unknown setting {setting}")
+        # else:
+        #     configure_menu(self.env_manager)
+        'Configure settings: configure'
+        #configure_menu(self.env_manager)
+        configure_cmd = ConfigureCmd(self.env_manager)
+        configure_cmd.cmdloop()
+
+    def do_ping(self, arg):
+        'Run ping scan: ping [host]'
+        hosts = [item.strip() for item in arg.split(',') if item.strip()]
+        hosts = hosts or self.host_manager.hosts
+        for host in hosts:
+            print(f"{host}: {self.cmd_generator.ping_ttl(host)}")
+
+    def do_exit(self, arg):
+        'Exit the application: exit'
+        return True
+
+    def do_help(self, arg):
+        'List available commands: help'
+        Cmd.do_help(self, arg)

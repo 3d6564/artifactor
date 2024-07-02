@@ -56,7 +56,7 @@ class CommandGenerator:
         except Exception as e:
             return f'An error occurred: {e}'
 
-    def execute_commands(self, host_dict, jumpbox, jumpbox_username, target_username, jumpbox_key_path=None, target_key_path=None, jumpbox_password=None, target_password=None):
+    def execute_commands(self, host_dict, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_key_path=None, target_key_path=None, jumpbox_password=None, target_password=None):
         """Execute the specified command on all hosts in parallel."""
         output = self.parallel_executor.execute_commands_in_parallel(
             self.ssh_client.run_command_on_host,
@@ -71,7 +71,7 @@ class CommandGenerator:
         )
         return output
 
-    def detect_os(self, hosts, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def detect_os(self, hosts, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
         """
         Detect the OS type of each host using ping TTL values and get_os function
         
@@ -92,13 +92,8 @@ class CommandGenerator:
                 os_type = 'unknown'
                 values["os_type"] = os_type
                 unknown_dict[host] = values
-            
-        output = self.execute_commands(known_dict,
-                                       jumpbox,
-                                       jumpbox_username=jumpbox_username, 
-                                       target_username=target_username,
-                                       jumpbox_key_path=jumpbox_key_path,
-                                       target_key_path=target_key_path)
+
+        output = self.execute_commands(known_dict)
         
         for key, value in output.items():
             os_type = host_dict[key].get('os_type')
@@ -122,12 +117,7 @@ class CommandGenerator:
         return host_dict
 
     def run_command(self, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_key_path, target_key_path):
-        host_dict = self.detect_os(hosts, 
-                                  jumpbox, 
-                                  jumpbox_username=jumpbox_username, 
-                                  target_username=target_username, 
-                                  jumpbox_key_path=jumpbox_key_path,
-                                  target_key_path=target_key_path)
+        host_dict = self.detect_os(hosts)
 
         for host, values in host_dict.items():
             try:
@@ -144,12 +134,7 @@ class CommandGenerator:
                 print(f"Could not determine the OS of {host}. Skipping...")
                 continue
 
-        results = self.execute_commands(host_dict, 
-                                        jumpbox, 
-                                        jumpbox_username=jumpbox_username, 
-                                        target_username=target_username, 
-                                        jumpbox_key_path=jumpbox_key_path, 
-                                        target_key_path=target_key_path)
+        results = self.execute_commands(host_dict)
         return results
 
     def modify_commands(self, command_name, commands):
