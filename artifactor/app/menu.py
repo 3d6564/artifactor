@@ -122,26 +122,55 @@ class RunMenuCmd(Cmd):
           'List available commands: help'
           Cmd.do_help(self, arg)
 
+class ModifyCommandsCmd(Cmd):
+     prompt = 'artc-modify_commands> '
+     intro = 'Modify Commands menu. Type ? to list options'
+
+     def __init__(self, command_generator):
+          super().__init__()
+          self.command_generator = command_generator
+
+     def do_add(self, arg):
+          'Add or update a command: add'
+          add_commands(self.command_generator)
+
+     def do_copy(self, arg):
+          'Copy a command from a distribution: copy'
+          copy_command_menu(self.command_generator)
+
+     def do_back(self, arg):
+          'Return to the main menu: back'
+          return True
+
+     def do_help(self, arg):
+          'List available commands: help'
+          Cmd.do_help(self, arg)
+
 def copy_command_menu(command_generator):
-    while True:
-        command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
-        if command_name.lower() == 'back':
-            break
-        if command_name not in command_generator.commands:
-            print(f"Command '{command_name}' does not exist.")
-            continue
+     while True:
+          command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
+          if command_name.lower() == 'back':
+               break
+          if command_name not in command_generator.commands:
+               print(f"Command '{command_name}' does not exist.")
+               continue
 
-        src_distro = input("Enter the source distribution: ")
-        if src_distro not in command_generator.commands[command_name]:
-            print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
-            continue
+          src_distro = input("Enter the source distribution: ")
+          if src_distro not in command_generator.commands[command_name]:
+               print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
+               continue
 
-        dest_distro = input("Enter the destination distribution: ")
-        command_generator.commands[command_name][dest_distro] = command_generator.commands[command_name][src_distro]
-        command_generator.save_commands()
-        print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
-        break
+          dest_distro = input("Enter the destination distribution: ")
+          command_generator.commands[command_name][dest_distro] = command_generator.commands[command_name][src_distro]
+          command_generator.save_commands()
+          print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
+          break
     
+def modify_commands_menu(command_generator):
+     modify_cmd = ModifyCommandsCmd(command_generator)
+     modify_cmd.cmdloop()
+
+
 def modify_command_menu():
      options = ["add or update a command",
                 "clone command from a distribution",
@@ -200,15 +229,15 @@ def add_commands(command_generator):
           return
 
 
-def modify_commands_menu(command_generator):
-     while True:
-          choice = modify_command_menu()
+# def modify_commands_menu(command_generator):
+#      while True:
+#           choice = modify_command_menu()
 
-          if choice == '1':
-               add_commands(command_generator)
-          elif choice == '2':
-               copy_command_menu(command_generator)
-          elif choice == '3':
-               return
-          else:
-               print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
+#           if choice == '1':
+#                add_commands(command_generator)
+#           elif choice == '2':
+#                copy_command_menu(command_generator)
+#           elif choice == '3':
+#                return
+#           else:
+#                print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
