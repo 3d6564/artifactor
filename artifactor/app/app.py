@@ -29,16 +29,18 @@ class Artifactor(Cmd):
         if self.cmd_generator.commands:
             print("\033[1;32mCommands have been initialized.\033[0m")
 
-    def add_host(self, arg):
+    def do_add(self, arg):
         'Add a host: add <hostname_or_ip>'
         new_host = arg.strip()
-        if self.host_manager.add_host(new_host):
+        if new_host == "":
+            print(f"Argument was empty.")
+        elif self.host_manager.add_host(new_host):
             print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
         else:
             print(f"Host {arg} is already in the list.")
 
     def do_load(self, arg):
-        'Load hosts from file: load'
+        'Load hosts from file: load [path/to/file]'
         self.host_manager.hosts_file = arg.strip() if arg else self.host_manager.hosts_file
         self.host_manager.hosts = self.host_manager.load_hosts()
         print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
