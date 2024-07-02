@@ -19,14 +19,7 @@ class ParallelExecutor:
                 executor.submit(command_func, 
                                 values["command"], 
                                 values["os_type"],
-                                host, 
-                                jumpbox, 
-                                jumpbox_username=jumpbox_username, 
-                                target_username=target_username, 
-                                jumpbox_password=jumpbox_password, 
-                                jumpbox_key_path=jumpbox_key_path, 
-                                target_password=target_password, 
-                                target_key_path=target_key_path): (host, values["command_name"]) for host, values in host_list.items()
+                                host): (host, values["command_name"]) for host, values in host_list.items()
             }
             for future in as_completed(future_to_host):
                 host, command_name = future_to_host[future]

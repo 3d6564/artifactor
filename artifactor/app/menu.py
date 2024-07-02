@@ -37,6 +37,9 @@ class ConfigureCmd(Cmd):
           #self.settings = settings
           self.command_generator = CommandGenerator()
           print(f"\nJumpbox Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX')})")
+          print(f"Port Forward Usage (current: {self.env_manager.get_env_var('USE_PORT_FORWARD')})")
+          print(f"Jumpbox Password Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX_PASSWORD')})")
+          print(f"Target Password Usage (current: {self.env_manager.get_env_var('USE_TARGET_PASSWORD')})\n")
 
      def do_modify_commands(self, arg):
           'Modify commands: modify_commands'
@@ -165,7 +168,7 @@ def copy_command_menu(command_generator):
           command_generator.save_commands()
           print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
           break
-    
+
 def modify_commands_menu(command_generator):
      modify_cmd = ModifyCommandsCmd(command_generator)
      modify_cmd.cmdloop()
