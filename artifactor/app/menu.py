@@ -170,19 +170,6 @@ def modify_commands_menu(command_generator):
      modify_cmd = ModifyCommandsCmd(command_generator)
      modify_cmd.cmdloop()
 
-
-def modify_command_menu():
-     options = ["add or update a command",
-                "clone command from a distribution",
-                "back"
-     ]
-     
-     print("\nadd or update command options:")
-     for idx, option in enumerate(options, 1):
-          print(f"{idx}. {option}")
-
-     return input("Enter your choice: ")
-
 def add_commands(command_generator):
      """
      This will go through a series of menus to allow the user to add commands for
@@ -227,17 +214,3 @@ def add_commands(command_generator):
      else:
           print("Invalid option. No command added.")
           return
-
-
-# def modify_commands_menu(command_generator):
-#      while True:
-#           choice = modify_command_menu()
-
-#           if choice == '1':
-#                add_commands(command_generator)
-#           elif choice == '2':
-#                copy_command_menu(command_generator)
-#           elif choice == '3':
-#                return
-#           else:
-#                print("\n\033[1;31mInvalid command choice, please try again.\033[0m")
