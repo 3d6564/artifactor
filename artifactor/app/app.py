@@ -30,7 +30,7 @@ class Artifactor(Cmd):
             print("\033[1;32mCommands have been initialized.\033[0m")
 
     def do_add(self, arg):
-        'Add a host: add <hostname_or_ip>'
+        'Add a host and save to host file: add <hostname_or_ip>'
         new_host = arg.strip()
         if new_host == "":
             print(f"Argument was empty.")
@@ -46,7 +46,7 @@ class Artifactor(Cmd):
         print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
 
     def do_run(self, arg):
-        'Run commands on hosts: run [command_name]'       
+        'Run a command on loaded hosts: run [command_name]'       
         command_name = arg.strip() if arg else None
 
         if not command_name:
@@ -84,7 +84,7 @@ class Artifactor(Cmd):
         #         print(f"Unknown setting {setting}")
         # else:
         #     configure_menu(self.env_manager)
-        'Configure settings: configure'
+        'Configure additional settings in application: configure'
         #configure_menu(self.env_manager)
         configure_cmd = ConfigureCmd(self.env_manager)
         configure_cmd.cmdloop()
@@ -101,5 +101,32 @@ class Artifactor(Cmd):
         return True
 
     def do_help(self, arg):
-        'List available commands: help'
-        Cmd.do_help(self, arg)
+        'List available menu commands and usage: help [<arg>]'
+        #Cmd.do_help(self, arg)
+        self.print_help(arg)
+
+    def print_help(self, arg):
+        """Print help information for all commands."""
+        if arg:
+            command_method = getattr(self, f'do_{arg}', None)
+            help_info = command_method.__doc__ if command_method.__doc__ else ''
+            description, command = help_info.split(':')
+            command_parts = command.strip().split(' ', 1)
+            if len(command_parts) == 1:
+                command_parts.append('')
+            command, command_options = command_parts
+            print(f"Usage: {arg} {command_options}")
+            print()
+        else:
+            tab_position = 15
+            print("Usage: <command> [<arg>]")
+            print("\nCommands:")
+            for attr in dir(self):
+                if attr.startswith('do_'):
+                    command_name = attr[3:]
+                    command_method = getattr(self, attr)
+                    help_info = command_method.__doc__ if command_method.__doc__ else ''
+                    description, command = help_info.split(':')
+                    print(f"    {command_name.ljust(15)} {description.lower()}")
+            print()
+                    #{command.strip():<{tab_position}}
