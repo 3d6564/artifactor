@@ -5,6 +5,7 @@ from cmd import Cmd
 from .menu import ConfigureCmd, RunMenuCmd
 from config import EnvManager, HostManager
 from commands import CommandGenerator
+from utils import ExitApplication
 
 
 class Artifactor(Cmd):
@@ -71,16 +72,6 @@ class Artifactor(Cmd):
             )
 
     def do_configure(self, arg):
-        # 'Configure settings: configure <setting> <value>'
-        # if arg:
-        #     setting, value = arg.split()
-        #     if setting in self.settings:
-        #         self.settings[setting] = int(value)
-        #         print(f"Updated {setting} to {value}")
-        #     else:
-        #         print(f"Unknown setting {setting}")
-        # else:
-        #     configure_menu(self.env_manager)
         'Configure additional settings in application: configure'
         configure_cmd = ConfigureCmd(self.env_manager)
         configure_cmd.cmdloop()
@@ -94,7 +85,7 @@ class Artifactor(Cmd):
 
     def do_exit(self, arg):
         'Exit the application: exit'
-        return True
+        raise ExitApplication
 
     def do_help(self, arg):
         'List available menu commands and usage: help [<arg>]'

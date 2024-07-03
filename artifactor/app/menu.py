@@ -4,6 +4,7 @@ import types
 from cmd import Cmd
 from termcolor import colored
 from commands import CommandGenerator
+from utils import ExitApplication
 
 
 def print_ascii_art():
@@ -83,9 +84,13 @@ class ConfigureCmd(Cmd):
           'Return to the main menu: back'
           return True
      
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
      def do_help(self, arg):
-        'List available menu commands and usage: help [<arg>]'
-        self.print_help(arg)
+          'List available menu commands and usage: help [<arg>]'
+          self.print_help(arg)
 
      def print_help(self, arg):
           'Print help information for all commands.'
@@ -153,6 +158,10 @@ class RunMenuCmd(Cmd):
      def do_back(self, arg):
           'Return to the main menu: back'
           return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
 
      def do_help(self, arg):
           'List available menu commands and usage: help [<arg>]'
@@ -269,10 +278,14 @@ class ModifyCommandsCmd(Cmd):
      def do_back(self, arg):
           'Return to the main menu: back'
           return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
 
      def do_help(self, arg):
-        'List available menu commands and usage: help [<arg>]'
-        self.print_help(arg)
+          'List available menu commands and usage: help [<arg>]'
+          self.print_help(arg)
 
      def print_help(self, arg):
           'Print help information for all commands.'
