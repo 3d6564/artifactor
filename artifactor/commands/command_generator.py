@@ -137,18 +137,8 @@ class CommandGenerator:
         results = self.execute_commands(host_dict)
         return results
 
-    def modify_commands(self, command_name, commands):
-        if command_name in self.commands:
-            print(f"Updating existing command '{command_name}' with {commands}")
-            self.commands[command_name].update(commands)
-        else:
-            print(f"Adding new command '{command_name}'")
-            self.commands[command_name] = commands
-        self.save_commands()
-
     def distribution_exists(self, distro):
         for command in self.commands.values():
             if distro in command:
                 return True
         return False
-    

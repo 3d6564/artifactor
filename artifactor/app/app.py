@@ -53,9 +53,6 @@ class Artifactor(Cmd):
             commands_menu = RunMenuCmd(self.cmd_generator)
             commands_menu.cmdloop()
             command_name = commands_menu.selected_command
-
-        if not command_name:
-            print("No command selected.")
             return
 
         if not self.host_manager.hosts:

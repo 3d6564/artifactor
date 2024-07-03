@@ -36,10 +36,11 @@ class ConfigureCmd(Cmd):
           self.env_manager = env_manager
           #self.settings = settings
           self.command_generator = CommandGenerator()
-          print(f"\nJumpbox Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX')})")
-          print(f"Port Forward Usage (current: {self.env_manager.get_env_var('USE_PORT_FORWARD')})")
-          print(f"Jumpbox Password Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX_PASSWORD')})")
-          print(f"Target Password Usage (current: {self.env_manager.get_env_var('USE_TARGET_PASSWORD')})\n")
+          print("\n\033[1;31mconfiguration:\033[0m")
+          print(f"    Jumpbox Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX')})")
+          print(f"    Port Forward Usage (current: {self.env_manager.get_env_var('USE_PORT_FORWARD')})")
+          print(f"    Jumpbox Password Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX_PASSWORD')})")
+          print(f"    Target Password Usage (current: {self.env_manager.get_env_var('USE_TARGET_PASSWORD')})\n")
 
      def do_modify_commands(self, arg):
           'Modify commands: modify_commands'
@@ -108,7 +109,7 @@ class ConfigureCmd(Cmd):
                          command_method = getattr(self, attr)
                          help_info = command_method.__doc__ if command_method.__doc__ else ''
                          description, command = help_info.split(':')
-                         print(f"    {command_name.ljust(15)} {description.lower()}")
+                         print(f"    {command_name.ljust(25)} {description.lower()}")
                print()
 
 class RunMenuCmd(Cmd):
@@ -116,6 +117,7 @@ class RunMenuCmd(Cmd):
      intro = 'Run menu. Type ? to list options'
 
      def __init__(self, command_generator):
+          'Run a command on hosts loaded to application: run [command_name]'
           super().__init__()
           self.command_generator = command_generator
           self.selected_command = None
@@ -124,15 +126,19 @@ class RunMenuCmd(Cmd):
 
      def _create_dynamic_commands(self):
           'This generates a dynamic list of commands to run: none'
-          for command in self.commands:
-               def dynamic_method(self, arg, cmd=command):
+          def create_method(cmd):
+               def dynamic_method(self, arg):
                     'Dynamically generated method for each command'
                     self.selected_command = cmd
+                    print(f"Selected command: {self.selected_command}")
                     return True  # Exit the loop after selection
+               dynamic_method.__name__ = f'do_{cmd}'
+               dynamic_method.__doc__ = f'{cmd}'
+               return dynamic_method
                
-               dynamic_method.__name__ = f'do_{command}'
-               dynamic_method.__doc__ = f'{command}'
-               setattr(self, dynamic_method.__name__, types.MethodType(dynamic_method, self))
+          for command in self.commands:
+               method = create_method(command)
+               setattr(self, method.__name__, types.MethodType(method, self))
 
      def do_list(self, arg):
           'List commands to run: list'
@@ -150,31 +156,43 @@ class RunMenuCmd(Cmd):
 
      def do_help(self, arg):
           'List available menu commands and usage: help [<arg>]'
-          self.print_help(arg)
-
-     def print_help(self, arg):
-          'Print help information for all commands.'
           if arg:
                command_method = getattr(self, f'do_{arg}', None)
-               help_info = command_method.__doc__ if command_method.__doc__ else ''
-               description, command = help_info.split(':')
-               command_parts = command.strip().split(' ', 1)
-               if len(command_parts) == 1:
-                    command_parts.append('')
-               command, command_options = command_parts
-               print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
-               print(f"\033[1;31musage:\033[0m {arg} {command_options}")
-               print()
+               if command_method and command_method.__doc__:
+                    help_info = command_method.__doc__.split(':', 1)
+                    description = help_info[0].strip()
+                    usage = help_info[1].strip() if len(help_info) > 1 else ""
+                    print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+                    print(f"\033[1;31musage:\033[0m {arg} {usage}\n")
+               else:
+                    print(f"No help available for {arg}\n")
           else:
                print("\033[1;31musage:\033[0m <command> [<arg>]")
-               print("\n\033[1;31mcommands:\033[0m")
+
+               run_commands = []
+               commands = []
+
                for attr in dir(self):
                     if attr.startswith('do_'):
                          command_name = attr[3:]
                          command_method = getattr(self, attr)
-                         help_info = command_method.__doc__ if command_method.__doc__ else ''
-                         print(f"    {help_info}")
-                         #print(f"    {command_name.ljust(15)} {description.lower()}")
+                         if command_method and command_method.__doc__:
+                              help_info = command_method.__doc__.split(':', 1)
+                              description = help_info[0].strip()
+                              if command_name.startswith('get_'):
+                                   run_commands.append((command_name, description))
+                              else:
+                                   commands.append((command_name, description))
+
+               if commands:
+                    print("\n\033[1;31mcommands:\033[0m")
+                    for command_name, description in commands:
+                         print(f"    {command_name.ljust(25)} {description.lower()}")
+
+               if run_commands:
+                    print("\n\033[1;31mrun_commands:\033[0m")
+                    for command_name, description in run_commands:
+                         print(f"    {command_name.ljust(25)} {description.lower()}")
                print()
 
 class ModifyCommandsCmd(Cmd):
