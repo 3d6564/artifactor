@@ -40,13 +40,13 @@ class Artifactor(Cmd):
             print(f"Host {arg} is already in the list.")
 
     def do_load(self, arg):
-        'Load hosts from file: load [path/to/file]'
+        'Load hosts from the default or a custom file: load [<path/to/file>]'
         self.host_manager.hosts_file = arg.strip() if arg else self.host_manager.hosts_file
         self.host_manager.hosts = self.host_manager.load_hosts()
         print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
 
     def do_run(self, arg):
-        'Run a command on loaded hosts: run [command_name]'       
+        'Run a command on hosts loaded to application: run [command_name]'       
         command_name = arg.strip() if arg else None
 
         if not command_name:
@@ -85,7 +85,6 @@ class Artifactor(Cmd):
         # else:
         #     configure_menu(self.env_manager)
         'Configure additional settings in application: configure'
-        #configure_menu(self.env_manager)
         configure_cmd = ConfigureCmd(self.env_manager)
         configure_cmd.cmdloop()
 
@@ -102,11 +101,10 @@ class Artifactor(Cmd):
 
     def do_help(self, arg):
         'List available menu commands and usage: help [<arg>]'
-        #Cmd.do_help(self, arg)
         self.print_help(arg)
 
     def print_help(self, arg):
-        """Print help information for all commands."""
+        'Print help information for all commands.'
         if arg:
             command_method = getattr(self, f'do_{arg}', None)
             help_info = command_method.__doc__ if command_method.__doc__ else ''
@@ -115,12 +113,12 @@ class Artifactor(Cmd):
             if len(command_parts) == 1:
                 command_parts.append('')
             command, command_options = command_parts
-            print(f"Usage: {arg} {command_options}")
+            print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+            print(f"\033[1;31musage:\033[0m {arg} {command_options}")
             print()
         else:
-            tab_position = 15
-            print("Usage: <command> [<arg>]")
-            print("\nCommands:")
+            print("\033[1;31musage:\033[0m <command> [<arg>]")
+            print("\n\033[1;31mcommands:\033[0m")
             for attr in dir(self):
                 if attr.startswith('do_'):
                     command_name = attr[3:]
@@ -129,4 +127,3 @@ class Artifactor(Cmd):
                     description, command = help_info.split(':')
                     print(f"    {command_name.ljust(15)} {description.lower()}")
             print()
-                    #{command.strip():<{tab_position}}

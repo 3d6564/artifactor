@@ -43,7 +43,8 @@ class ConfigureCmd(Cmd):
 
      def do_modify_commands(self, arg):
           'Modify commands: modify_commands'
-          modify_commands_menu(self.command_generator)
+          modify_cmd = ModifyCommandsCmd(self.command_generator)
+          modify_cmd.cmdloop()
 
      def do_load_commands(self, arg):
           'Load commands: load_commands'
@@ -82,8 +83,33 @@ class ConfigureCmd(Cmd):
           return True
      
      def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
+        'List available menu commands and usage: help [<arg>]'
+        self.print_help(arg)
+
+     def print_help(self, arg):
+          'Print help information for all commands.'
+          if arg:
+               command_method = getattr(self, f'do_{arg}', None)
+               help_info = command_method.__doc__ if command_method.__doc__ else ''
+               description, command = help_info.split(':')
+               command_parts = command.strip().split(' ', 1)
+               if len(command_parts) == 1:
+                    command_parts.append('')
+               command, command_options = command_parts
+               print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+               print(f"\033[1;31musage:\033[0m {arg} {command_options}")
+               print()
+          else:
+               print("\033[1;31musage:\033[0m <command> [<arg>]")
+               print("\n\033[1;31mcommands:\033[0m")
+               for attr in dir(self):
+                    if attr.startswith('do_'):
+                         command_name = attr[3:]
+                         command_method = getattr(self, attr)
+                         help_info = command_method.__doc__ if command_method.__doc__ else ''
+                         description, command = help_info.split(':')
+                         print(f"    {command_name.ljust(15)} {description.lower()}")
+               print()
 
 class RunMenuCmd(Cmd):
      prompt = 'artc-run> '
@@ -97,6 +123,7 @@ class RunMenuCmd(Cmd):
           self._create_dynamic_commands()
 
      def _create_dynamic_commands(self):
+          'This generates a dynamic list of commands to run: none'
           for command in self.commands:
                def dynamic_method(self, arg, cmd=command):
                     'Dynamically generated method for each command'
@@ -104,7 +131,7 @@ class RunMenuCmd(Cmd):
                     return True  # Exit the loop after selection
                
                dynamic_method.__name__ = f'do_{command}'
-               dynamic_method.__doc__ = f'Run the {command} command'
+               dynamic_method.__doc__ = f'{command}'
                setattr(self, dynamic_method.__name__, types.MethodType(dynamic_method, self))
 
      def do_list(self, arg):
@@ -122,8 +149,33 @@ class RunMenuCmd(Cmd):
           return True
 
      def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
+          'List available menu commands and usage: help [<arg>]'
+          self.print_help(arg)
+
+     def print_help(self, arg):
+          'Print help information for all commands.'
+          if arg:
+               command_method = getattr(self, f'do_{arg}', None)
+               help_info = command_method.__doc__ if command_method.__doc__ else ''
+               description, command = help_info.split(':')
+               command_parts = command.strip().split(' ', 1)
+               if len(command_parts) == 1:
+                    command_parts.append('')
+               command, command_options = command_parts
+               print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+               print(f"\033[1;31musage:\033[0m {arg} {command_options}")
+               print()
+          else:
+               print("\033[1;31musage:\033[0m <command> [<arg>]")
+               print("\n\033[1;31mcommands:\033[0m")
+               for attr in dir(self):
+                    if attr.startswith('do_'):
+                         command_name = attr[3:]
+                         command_method = getattr(self, attr)
+                         help_info = command_method.__doc__ if command_method.__doc__ else ''
+                         print(f"    {help_info}")
+                         #print(f"    {command_name.ljust(15)} {description.lower()}")
+               print()
 
 class ModifyCommandsCmd(Cmd):
      prompt = 'artc-modify_commands> '
@@ -134,86 +186,97 @@ class ModifyCommandsCmd(Cmd):
           self.command_generator = command_generator
 
      def do_add(self, arg):
-          'Add or update a command: add'
-          add_commands(self.command_generator)
+          'Add or update a command with a series of menus: add'
+          command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
+          if command_name == 'exit' or not command_name:
+               return
+          commands = {}
+          while True:
+               distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
+                              "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
+                              "Enter the distribution name (or type 'done' to finish): \033[0m").strip().lower()
+               if distro == 'done' or not distro:
+                    break
+               if distro in commands:
+                    print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
+                    continue
+               if self.command_generator.distribution_exists(distro):
+                    print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
+               if not self.command_generator.distribution_exists(distro):
+                    confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
+                    if confirm == 'n':
+                         continue
+
+               command = input(f"Enter the command for {distro}: ")
+               use_sudo = input(f"Does this command require sudo? (yes/no): ").strip().lower() == "yes"
+               confirm = input(f"\033[1;31mYou entered '{distro}' with the command '{command}' with the command name '{command_name}'.\n"
+                              "Is that correct? (y/n):\033[0m ").lower()
+               if confirm.lower() in ['yes', 'y']:
+                    if command == 'null' or command == '':
+                         command = None
+                    commands[distro] = {"cmd": command, "sudo": use_sudo}
+
+                    print(f"\033[1;30mCommand '{command_name}' stored for '{distro}' with the command '{command}'. It will be written\n"
+                         "to the file when 'done'.\033[0m")
+
+          if commands:
+               self.command_generator.modify_commands(command_name, commands)
+               print(f"Command '{command_name}' added/updated successfully.")
+               return
+          else:
+               print("Invalid option. No command added.")
+               return
 
      def do_copy(self, arg):
           'Copy a command from a distribution: copy'
-          copy_command_menu(self.command_generator)
+          while True:
+               command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
+               if command_name.lower() == 'back':
+                    break
+               if command_name not in self.command_generator.commands:
+                    print(f"Command '{command_name}' does not exist.")
+                    continue
+
+               src_distro = input("Enter the source distribution: ")
+               if src_distro not in self.command_generator.commands[command_name]:
+                    print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
+                    continue
+
+               dest_distro = input("Enter the destination distribution: ")
+               self.command_generator.commands[command_name][dest_distro] = self.command_generator.commands[command_name][src_distro]
+               self.command_generator.save_commands()
+               print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
+               break
 
      def do_back(self, arg):
           'Return to the main menu: back'
           return True
 
      def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
+        'List available menu commands and usage: help [<arg>]'
+        self.print_help(arg)
 
-def copy_command_menu(command_generator):
-     while True:
-          command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
-          if command_name.lower() == 'back':
-               break
-          if command_name not in command_generator.commands:
-               print(f"Command '{command_name}' does not exist.")
-               continue
-
-          src_distro = input("Enter the source distribution: ")
-          if src_distro not in command_generator.commands[command_name]:
-               print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
-               continue
-
-          dest_distro = input("Enter the destination distribution: ")
-          command_generator.commands[command_name][dest_distro] = command_generator.commands[command_name][src_distro]
-          command_generator.save_commands()
-          print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
-          break
-
-def modify_commands_menu(command_generator):
-     modify_cmd = ModifyCommandsCmd(command_generator)
-     modify_cmd.cmdloop()
-
-def add_commands(command_generator):
-     """
-     This will go through a series of menus to allow the user to add commands for
-     multiple distributions.
-     """
-     command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
-     if command_name == 'exit' or not command_name:
-          return
-     commands = {}
-     while True:
-          distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
-                         "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
-                         "Enter the distribution name (or type 'done' to finish): \033[0m").strip().lower()
-          if distro == 'done' or not distro:
-               break
-          if distro in commands:
-               print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
-               continue
-          if command_generator.distribution_exists(distro):
-               print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
-          if not command_generator.distribution_exists(distro):
-               confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
-               if confirm == 'n':
-                    continue
-
-          command = input(f"Enter the command for {distro}: ")
-          use_sudo = input(f"Does this command require sudo? (yes/no): ").strip().lower() == "yes"
-          confirm = input(f"\033[1;31mYou entered '{distro}' with the command '{command}' with the command name '{command_name}'.\n"
-                          "Is that correct? (y/n):\033[0m ").lower()
-          if confirm.lower() in ['yes', 'y']:
-               if command == 'null' or command == '':
-                    command = None
-               commands[distro] = {"cmd": command, "sudo": use_sudo}
-
-               print(f"\033[1;30mCommand '{command_name}' stored for '{distro}' with the command '{command}'. It will be written\n"
-                    "to the file when 'done'.\033[0m")
-
-     if commands:
-          command_generator.modify_commands(command_name, commands)
-          print(f"Command '{command_name}' added/updated successfully.")
-          return
-     else:
-          print("Invalid option. No command added.")
-          return
+     def print_help(self, arg):
+          'Print help information for all commands.'
+          if arg:
+               command_method = getattr(self, f'do_{arg}', None)
+               help_info = command_method.__doc__ if command_method.__doc__ else ''
+               description, command = help_info.split(':')
+               command_parts = command.strip().split(' ', 1)
+               if len(command_parts) == 1:
+                    command_parts.append('')
+               command, command_options = command_parts
+               print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+               print(f"\033[1;31musage:\033[0m {arg} {command_options}")
+               print()
+          else:
+               print("\033[1;31musage:\033[0m <command> [<arg>]")
+               print("\n\033[1;31mcommands:\033[0m")
+               for attr in dir(self):
+                    if attr.startswith('do_'):
+                         command_name = attr[3:]
+                         command_method = getattr(self, attr)
+                         help_info = command_method.__doc__ if command_method.__doc__ else ''
+                         description, command = help_info.split(':')
+                         print(f"    {command_name.ljust(15)} {description.lower()}")
+               print()
