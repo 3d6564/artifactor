@@ -3,8 +3,7 @@ import json
 import subprocess
 from cmd import Cmd
 from .menu import ConfigureCmd, RunMenuCmd
-from config import EnvManager, HostManager
-from commands import CommandGenerator
+from config import EnvManager, HostManager, CommandGenerator
 from utils import ExitApplication
 
 
@@ -16,14 +15,12 @@ class Artifactor(Cmd):
         super().__init__()
 
         print("\nInitializing environment...\n")
-
-        # initialize environment
-        self.env_manager = EnvManager()
-        self.host_manager = HostManager()
-        self.cmd_generator = CommandGenerator()
         self.initialize_environment()
 
     def initialize_environment(self):
+        self.env_manager = EnvManager()
+        self.host_manager = HostManager()
+        self.cmd_generator = CommandGenerator()
         self.env_manager.initialize_env()
         if self.host_manager.hosts:
             print("\033[1;32mhosts have been initialized.\033[0m")
@@ -78,13 +75,9 @@ class Artifactor(Cmd):
 
         if command_name:
             self.cmd_generator.run_command(
+                self.env_manager,
                 command_name,
-                self.host_manager.hosts,
-                self.env_manager.env_vars.get('JUMPBOX'),
-                self.env_manager.env_vars.get('JUMPBOX_USERNAME'),
-                self.env_manager.env_vars.get('TARGET_USERNAME'),
-                self.env_manager.env_vars.get('JUMPBOX_KEY'),
-                self.env_manager.env_vars.get('TARGET_KEY')
+                self.host_manager.hosts
             )
 
     def do_configure(self, arg):

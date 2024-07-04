@@ -3,7 +3,6 @@ import subprocess
 import re
 import shutil
 from connectors import SSHClient
-from config import EnvManager
 from .parallel_executor import ParallelExecutor
 
 
@@ -58,22 +57,16 @@ class CommandGenerator:
         except Exception as e:
             return f'An error occurred: {e}'
 
-    def execute_commands(self, host_dict, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_key_path=None, target_key_path=None, jumpbox_password=None, target_password=None):
+    def execute_commands(self, env_manager, host_dict):
         """Execute the specified command on all hosts in parallel."""
         output = self.parallel_executor.execute_commands_in_parallel(
             self.ssh_client.run_command_on_host,
-            host_dict,
-            jumpbox,
-            jumpbox_username=jumpbox_username,
-            target_username=target_username,
-            jumpbox_password=jumpbox_password,
-            jumpbox_key_path=jumpbox_key_path,
-            target_password=target_password,
-            target_key_path=target_key_path
+            env_manager,
+            host_dict
         )
         return output
 
-    def detect_os(self, hosts, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def detect_os(self, env_manager, hosts):
         """
         Detect the OS type of each host using ping TTL values and get_os function
         
@@ -95,7 +88,7 @@ class CommandGenerator:
                 values["os_type"] = os_type
                 unknown_dict[host] = values
 
-        output = self.execute_commands(known_dict)
+        output = self.execute_commands(env_manager, known_dict)
         
         for key, value in output.items():
             os_type = host_dict[key].get('os_type')
@@ -118,8 +111,8 @@ class CommandGenerator:
                 print(f"Unknown OS detected for {key}.")
         return host_dict
 
-    def run_command(self, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_key_path, target_key_path):
-        host_dict = self.detect_os(hosts)
+    def run_command(self, env_manager, command_name, hosts):
+        host_dict = self.detect_os(env_manager, hosts)
 
         for host, values in host_dict.items():
             try:
@@ -136,7 +129,7 @@ class CommandGenerator:
                 print(f"Could not determine the OS of {host}. Skipping...")
                 continue
 
-        results = self.execute_commands(host_dict)
+        results = self.execute_commands(env_manager, host_dict)
         return results
 
     def distribution_exists(self, distro):

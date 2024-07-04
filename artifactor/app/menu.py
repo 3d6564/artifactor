@@ -3,12 +3,11 @@ import random
 import types
 from cmd import Cmd
 from termcolor import colored
-from commands import CommandGenerator
 from utils import ExitApplication
 
 
 def print_ascii_art():
-     fonts = ['3-d','alligator','banner','big','bigchief',
+     fonts = ['3-d','banner','big','bigchief',
               'catwalk','coinstak','colossal',
               'doom','linux','lockergnome',
               'nancyj','ntgreek','peaks','rowancap','shadow']

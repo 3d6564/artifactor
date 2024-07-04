@@ -8,15 +8,17 @@ class ParallelExecutor:
         self.logger = Logger()
     
 
-    def execute_commands_in_parallel(self, command_func, host_list, jumpbox, jumpbox_username, target_username, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def execute_commands_in_parallel(self, command_func, env_manager, host_list):
         if not host_list:
             print("No hosts available to run the command.")
             return {}
 
         results = {}
+
         with ThreadPoolExecutor(max_workers=len(host_list)) as executor:
             future_to_host = {
-                executor.submit(command_func, 
+                executor.submit(command_func,
+                                env_manager,
                                 values["command"], 
                                 values["os_type"],
                                 host): (host, values["command_name"]) for host, values in host_list.items()
