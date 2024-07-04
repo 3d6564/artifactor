@@ -19,13 +19,13 @@ class HostManager:
             with open(self.hosts_file, 'r') as f:
                 return [line.strip() for line in f.readlines() if line.strip()]
         except FileNotFoundError:
-            print(f"\033[1;33mHosts file {self.hosts_file} does not exist... cloning template")
+            print(f"\033[1;33mHosts file {self.hosts_file} does not exist... cloning template\033[0m")
             try:
                 shutil.copyfile(self.host_template, self.hosts_file)
                 with open(self.hosts_file, 'r') as f:
                     return [line.strip() for line in f.readlines() if line.strip()]
             except:
-                print('\033[1;31mWarning: You do not have a hosts file.')
+                print('\033[1;31mWarning: You do not have a hosts file.\033[0m')
             return []
 
     def save_hosts(self):

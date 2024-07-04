@@ -15,6 +15,8 @@ class CommandGenerator:
         self.commands_file = commands_file
         self.commands = self.load_commands()
         self.parallel_executor = ParallelExecutor()
+        self.ping_count = 4
+        self.ping_timeout = 4
 
     def load_commands(self):
         try:
@@ -37,7 +39,7 @@ class CommandGenerator:
     def ping_ttl(self, host):
         try:
             # Execute ping command to get TTL
-            result = subprocess.run(['ping', '-n', '1', host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(['ping', '-n', str(self.ping_count), '-w', str(self.ping_timeout), host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             if result.returncode == 0:
                 # Get TTL from response using regex
                 ttl_search = re.search(r'TTL=(\d+)', result.stdout)
@@ -52,7 +54,7 @@ class CommandGenerator:
                 else:
                     return {'os_type': 'unknown', 'ttl': 'unknown'}
             else:
-                return f'Ping failed: {result.stderr}'
+                return {'os_type': {result.stderr}, 'ttl': 'unknown'}
         except Exception as e:
             return f'An error occurred: {e}'
 

@@ -78,4 +78,4 @@ class EnvManager:
             self.set_env_var('USE_JUMPBOX', jumpbox_use)
             print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")
         else:
-            print("\033[1;32mAll required environment variables have been initialized.\033[0m")
+            print("\033[1;32menvironment variables have been initialized.\033[0m")
