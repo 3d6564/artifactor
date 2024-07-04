@@ -30,11 +30,12 @@ def print_ascii_art():
 class ConfigureCmd(Cmd):
      prompt = 'artc-configure> '
 
-     def __init__(self, env_manager, cmd_generator, arg):
+     def __init__(self, env_manager, cmd_manager, host_manager, arg):
           super().__init__()
+          self.arg = arg
           self.env_manager = env_manager
-          #self.settings = settings
-          self.cmd_generator = cmd_generator
+          self.cmd_manager = cmd_manager
+          self.host_manager = host_manager
           self.onecmd(arg)
 
      def do_show(self, arg):
@@ -44,19 +45,25 @@ class ConfigureCmd(Cmd):
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print()
 
+     def do_hosts(self, arg):
+          'Commands submenu: commands'
+          hosts_cmd = HostsCmd(self.host_manager, arg)
+          hosts_cmd.cmdloop()
+
      def do_modify_commands(self, arg):
           'Modify commands: modify_commands'
-          modify_cmd = ModifyCommandsCmd(self.cmd_generator)
+          modify_cmd = ModifyCommandsCmd(self.cmd_manager)
           modify_cmd.cmdloop()
+          return True
 
      def do_load_commands(self, arg):
           'Load commands: load_commands'
-          self.cmd_generator.load_commands()
+          self.cmd_manager.load_commands()
           print("Commands loaded.")
 
      def do_save_commands(self, arg):
           'Save commands: save_commands'
-          self.cmd_generator.save_commands()
+          self.cmd_manager.save_commands()
           print("Commands saved.")
 
      def do_jumpbox_usage(self, arg):
@@ -68,21 +75,22 @@ class ConfigureCmd(Cmd):
      def do_ping_count(self, arg):
           'Change ping count: ping_count <value>'
           if arg.isdigit():
-               self.cmd_generator.ping_count = int(arg)
-               print(f"Ping count updated to {self.cmd_generator.ping_count}")
+               self.cmd_manager.ping_count = int(arg)
+               print(f"Ping count updated to {self.cmd_manager.ping_count}")
           else:
                print("Invalid input. Please enter a number.")
 
      def do_ping_timeout(self, arg):
           'Change ping timeout: ping_timeout <value>'
           if arg.isdigit():
-               self.cmd_generator.ping_timeout = int(arg)
-               print(f"Ping timeout updated to {self.cmd_generator.ping_timeout}")
+               self.cmd_manager.ping_timeout = int(arg)
+               print(f"Ping timeout updated to {self.cmd_manager.ping_timeout}")
           else:
                print("Invalid input. Please enter a number.")
      
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.stop = True
           return True
      
      def do_exit(self, arg):
@@ -91,10 +99,6 @@ class ConfigureCmd(Cmd):
 
      def do_help(self, arg):
           'List available menu commands and usage: help [<arg>]'
-          self.print_help(arg)
-
-     def print_help(self, arg):
-          'Print help information for all commands.'
           if arg:
                command_method = getattr(self, f'do_{arg}', None)
                help_info = command_method.__doc__ if command_method.__doc__ else ''
@@ -118,15 +122,68 @@ class ConfigureCmd(Cmd):
                          print(f"    {command_name.ljust(25)} {description.lower()}")
                print()
 
-class RunMenuCmd(Cmd):
+class HostsCmd(Cmd):
+     prompt = 'artc-configure-hosts> '
+
+     def __init__(self, host_manager, arg):
+          super().__init__()
+          self.arg = arg
+          self.host_manager = host_manager
+          self.onecmd(arg)
+
+     def do_add(self, arg):
+          'Add a host and save to host file: add <hostname_or_ip>'
+          new_host = arg.strip()
+          if new_host == "":
+               print(f"Argument was empty.")
+          elif self.host_manager.add_host(new_host):
+               print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
+          else:
+               print(f"Host {arg} is already in the list.")
+     
+     def do_back(self, arg):
+          'Return to the main menu: back'
+          self.stop = True
+          return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
+     def do_help(self, arg):
+          'List available menu commands and usage: help [<arg>]'
+          if arg:
+               command_method = getattr(self, f'do_{arg}', None)
+               help_info = command_method.__doc__ if command_method.__doc__ else ''
+               description, command = help_info.split(':')
+               command_parts = command.strip().split(' ', 1)
+               if len(command_parts) == 1:
+                    command_parts.append('')
+               command, command_options = command_parts
+               print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
+               print(f"\033[1;31musage:\033[0m {arg} {command_options}")
+               print()
+          else:
+               print("\033[1;31musage:\033[0m <command> [<arg>]")
+               print("\n\033[1;31mcommands:\033[0m")
+               for attr in dir(self):
+                    if attr.startswith('do_'):
+                         command_name = attr[3:]
+                         command_method = getattr(self, attr)
+                         help_info = command_method.__doc__ if command_method.__doc__ else ''
+                         description, command = help_info.split(':')
+                         print(f"    {command_name.ljust(25)} {description.lower()}")
+               print()
+
+class RunCmd(Cmd):
      prompt = 'artc-run> '
 
-     def __init__(self, command_generator):
+     def __init__(self, cmd_manager):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
-          self.cmd_generator = command_generator
+          self.cmd_manager = cmd_manager
           self.selected_command = None
-          self.commands = list(self.cmd_generator.commands.keys())
+          self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
 
      def _create_dynamic_commands(self):
@@ -147,10 +204,10 @@ class RunMenuCmd(Cmd):
 
      def do_list(self, arg):
           'List commands to run: list'
-          commands = list(self.cmd_generator.commands.keys())
+          commands = list(self.cmd_manager.commands.keys())
           if commands:
                for idx, command in enumerate(commands, 1):
-                    print(f"{idx}. {command}")
+                    print(f"{command}")
           else:
                print("No commands available.")
                return
@@ -209,7 +266,7 @@ class ModifyCommandsCmd(Cmd):
 
      def __init__(self, command_generator):
           super().__init__()
-          self.cmd_generator = command_generator
+          self.cmd_manager = command_generator
 
      def do_add(self, arg):
           'Add or update a command with a series of menus: add'
@@ -226,9 +283,9 @@ class ModifyCommandsCmd(Cmd):
                if distro in commands:
                     print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
                     continue
-               if self.cmd_generator.distribution_exists(distro):
+               if self.cmd_manager.distribution_exists(distro):
                     print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
-               if not self.cmd_generator.distribution_exists(distro):
+               if not self.cmd_manager.distribution_exists(distro):
                     confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
                     if confirm == 'n':
                          continue
@@ -246,7 +303,7 @@ class ModifyCommandsCmd(Cmd):
                          "to the file when 'done'.\033[0m")
 
           if commands:
-               self.cmd_generator.modify_commands(command_name, commands)
+               self.cmd_manager.modify_commands(command_name, commands)
                print(f"Command '{command_name}' added/updated successfully.")
                return
           else:
@@ -259,18 +316,18 @@ class ModifyCommandsCmd(Cmd):
                command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
                if command_name.lower() == 'back':
                     break
-               if command_name not in self.cmd_generator.commands:
+               if command_name not in self.cmd_manager.commands:
                     print(f"Command '{command_name}' does not exist.")
                     continue
 
                src_distro = input("Enter the source distribution: ")
-               if src_distro not in self.cmd_generator.commands[command_name]:
+               if src_distro not in self.cmd_manager.commands[command_name]:
                     print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
                     continue
 
                dest_distro = input("Enter the destination distribution: ")
-               self.cmd_generator.commands[command_name][dest_distro] = self.cmd_generator.commands[command_name][src_distro]
-               self.cmd_generator.save_commands()
+               self.cmd_manager.commands[command_name][dest_distro] = self.cmd_manager.commands[command_name][src_distro]
+               self.cmd_manager.save_commands()
                print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
                break
 
@@ -284,10 +341,6 @@ class ModifyCommandsCmd(Cmd):
 
      def do_help(self, arg):
           'List available menu commands and usage: help [<arg>]'
-          self.print_help(arg)
-
-     def print_help(self, arg):
-          'Print help information for all commands.'
           if arg:
                command_method = getattr(self, f'do_{arg}', None)
                help_info = command_method.__doc__ if command_method.__doc__ else ''

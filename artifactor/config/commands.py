@@ -6,7 +6,7 @@ from connectors import SSHClient
 from .parallel_executor import ParallelExecutor
 
 
-class CommandGenerator:
+class CommandManager:
 
     def __init__(self, commands_file='commands.json'):
         self.commands_template = 'commands.json.template'
