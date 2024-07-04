@@ -14,8 +14,6 @@ class CommandManager:
         self.commands_file = commands_file
         self.commands = self.load_commands()
         self.parallel_executor = ParallelExecutor()
-        self.ping_count = 4
-        self.ping_timeout = 4
 
     def load_commands(self):
         try:
@@ -35,10 +33,12 @@ class CommandManager:
         with open(self.commands_file, 'w') as f:
             json.dump(self.commands, f, indent=4)
 
-    def ping_ttl(self, host):
+    def ping_ttl(self, host, env_manager):
+        ping_count = env_manager.get_env_var('PING_COUNT')
+        ping_timeout = env_manager.get_env_var('PING_TIMEOUT')
         try:
             # Execute ping command to get TTL
-            result = subprocess.run(['ping', '-n', str(self.ping_count), '-w', str(self.ping_timeout), host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(['ping', '-n', str(ping_count), '-w', str(ping_timeout), host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             if result.returncode == 0:
                 # Get TTL from response using regex
                 ttl_search = re.search(r'TTL=(\d+)', result.stdout)
@@ -73,7 +73,7 @@ class CommandManager:
         """
         print("Detecting OS's...")
         self.commands = self.load_commands()
-        host_dict = {host: self.ping_ttl(host) for host in hosts}
+        host_dict = {host: self.ping_ttl(host, env_manager) for host in hosts}
         known_dict = {}
         unknown_dict = {}
 
@@ -131,6 +131,15 @@ class CommandManager:
 
         results = self.execute_commands(env_manager, host_dict)
         return results
+    
+    def modify_commands(self, command_name, commands):
+        if command_name in self.commands:
+            print(f"Updating existing command '{command_name}' with {commands}")
+            self.commands[command_name].update(commands)
+        else:
+            print(f"Adding new command '{command_name}'")
+            self.commands[command_name] = commands
+        self.save_commands()
 
     def distribution_exists(self, distro):
         for command in self.commands.values():

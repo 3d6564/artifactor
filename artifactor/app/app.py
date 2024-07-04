@@ -4,7 +4,7 @@ import subprocess
 from cmd import Cmd
 from .menu import ConfigureCmd, RunCmd
 from config import EnvManager, HostManager, CommandManager
-from utils import ExitApplication
+from utils import ExitApplication, common_help
 
 
 class Artifactor(Cmd):
@@ -13,11 +13,10 @@ class Artifactor(Cmd):
 
     def __init__(self):
         super().__init__()
-
-        print("\nInitializing environment...\n")
         self.initialize_environment()
 
     def initialize_environment(self):
+        print("\nInitializing environment...\n")
         self.env_manager = EnvManager()
         self.host_manager = HostManager()
         self.cmd_manager = CommandManager()
@@ -86,26 +85,4 @@ class Artifactor(Cmd):
         raise ExitApplication
 
     def do_help(self, arg):
-        'List available menu commands and usage: help [<arg>]'
-        if arg:
-            command_method = getattr(self, f'do_{arg}', None)
-            help_info = command_method.__doc__ if command_method.__doc__ else ''
-            description, command = help_info.split(':')
-            command_parts = command.strip().split(' ', 1)
-            if len(command_parts) == 1:
-                command_parts.append('')
-            command, command_options = command_parts
-            print(f"\033[1;31m{arg}\033[0m\n\033[1;31mdescription:\033[0m {description}\n")
-            print(f"\033[1;31musage:\033[0m {arg} {command_options}")
-            print()
-        else:
-            print("\033[1;31musage:\033[0m <command> [<arg>]")
-            print("\n\033[1;31mcommands:\033[0m")
-            for attr in dir(self):
-                if attr.startswith('do_'):
-                    command_name = attr[3:]
-                    command_method = getattr(self, attr)
-                    help_info = command_method.__doc__ if command_method.__doc__ else ''
-                    description, command = help_info.split(':')
-                    print(f"    {command_name.ljust(15)} {description.lower()}")
-            print()
+        common_help(self, arg)

@@ -17,7 +17,9 @@ class EnvManager:
             'TARGET_USERNAME': None,
             'TARGET_PASSWORD': None,
             'WIN_USERNAME': None,
-            'WIN_PASSWORD': None
+            'WIN_PASSWORD': None,
+            'PING_COUNT': None,
+            'PING_TIMEOUT': None
         }
         self.load_environment()
         self.check_and_create_env_file()
@@ -33,7 +35,7 @@ class EnvManager:
             open(self.env_file, 'a').close()
 
     def get_env_var(self, var_name):
-        return os.getenv(var_name)
+        return self.env_vars[var_name]
 
     def set_env_var(self, var_name, var_value):
         env_vars = dotenv_values(self.env_file)
