@@ -50,25 +50,18 @@ class Artifactor(Cmd):
             print("Invalid option. Nothing loaded.")
 
     def do_run(self, arg):
-        'Run a command on hosts loaded to application: run [<command_name>]'       
-        command_name = arg.strip() if arg else None
-
-        if not command_name:
-            commands_menu = RunCmd(self.cmd_manager)
-            commands_menu.cmdloop()
-            command_name = commands_menu.selected_command
-            #return
-
-        if not self.host_manager.hosts:
+        'Run a command on hosts loaded to application: run [<command_name>]'     
+        run_cmd = RunCmd(self.env_manager, 
+                         self.cmd_manager,
+                         self.host_manager,
+                         arg)
+        if arg and self.host_manager.hosts:
+            run_cmd.onecmd(arg)
+        elif self.host_manager.hosts:
+            run_cmd.cmdloop()
+        else:
             print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
             return
-
-        if command_name:
-            self.cmd_manager.run_command(
-                self.env_manager,
-                command_name,
-                self.host_manager.hosts
-            )
 
     def do_configure(self, arg):
         'Configure additional settings in application: configure [<sub-command>]'

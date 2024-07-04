@@ -179,10 +179,13 @@ class HostsCmd(Cmd):
 class RunCmd(Cmd):
      prompt = 'artc-run> '
 
-     def __init__(self, cmd_manager):
+     def __init__(self, env_manager, cmd_manager, host_manager, arg):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
+          self.arg = arg
           self.cmd_manager = cmd_manager
+          self.env_manager = env_manager
+          self.host_manager = host_manager
           self.selected_command = None
           self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
@@ -193,8 +196,12 @@ class RunCmd(Cmd):
                def dynamic_method(self, arg):
                     'Dynamically generated method for each command'
                     self.selected_command = cmd
-                    print(f"Selected command: {self.selected_command}")
-                    return True  # Exit the loop after selection
+                    self.cmd_manager.run_command(
+                         self.env_manager,
+                         self.selected_command,
+                         self.host_manager.hosts
+                    )
+                    return True
                dynamic_method.__name__ = f'do_{cmd}'
                dynamic_method.__doc__ = f'{cmd}'
                return dynamic_method
