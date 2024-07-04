@@ -76,7 +76,10 @@ class Artifactor(Cmd):
                                      self.cmd_manager,
                                      self.host_manager,
                                      arg)
-        configure_cmd.cmdloop()
+        if arg:
+            configure_cmd.onecmd(arg)
+        else:
+            configure_cmd.cmdloop()
 
     def do_ping(self, arg):
         'Run ping scan: ping [<host>]'

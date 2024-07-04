@@ -36,7 +36,7 @@ class ConfigureCmd(Cmd):
           self.env_manager = env_manager
           self.cmd_manager = cmd_manager
           self.host_manager = host_manager
-          self.onecmd(arg)
+          print('configure class arg: ' + arg)
 
      def do_show(self, arg):
           'Show existing environment configuration: show'
@@ -48,7 +48,10 @@ class ConfigureCmd(Cmd):
      def do_hosts(self, arg):
           'Commands submenu: commands'
           hosts_cmd = HostsCmd(self.host_manager, arg)
-          hosts_cmd.cmdloop()
+          if arg:
+               hosts_cmd.onecmd(arg)
+          else:
+               hosts_cmd.cmdloop()
 
      def do_modify_commands(self, arg):
           'Modify commands: modify_commands'
@@ -90,7 +93,6 @@ class ConfigureCmd(Cmd):
      
      def do_back(self, arg):
           'Return to the main menu: back'
-          self.stop = True
           return True
      
      def do_exit(self, arg):
@@ -129,7 +131,7 @@ class HostsCmd(Cmd):
           super().__init__()
           self.arg = arg
           self.host_manager = host_manager
-          self.onecmd(arg)
+          print('hosts class arg: ' + arg)
 
      def do_add(self, arg):
           'Add a host and save to host file: add <hostname_or_ip>'
@@ -143,7 +145,6 @@ class HostsCmd(Cmd):
      
      def do_back(self, arg):
           'Return to the main menu: back'
-          self.stop = True
           return True
      
      def do_exit(self, arg):
