@@ -1,5 +1,6 @@
 {
     "get_processes": {
+        "description": "get running processes",
         "linux": {
             "cmd": "ps aux",
             "sudo": false
@@ -12,12 +13,17 @@
             "cmd": "ps aux",
             "sudo": false
         },
-        "win-winrm": {
-            "cmd": "tasklist",
+        "debian": {
+            "cmd": "ps aux",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "ps aux",
             "sudo": false
         }
     },
     "get_users": {
+        "description": "get user accounts",
         "linux": {
             "cmd": "cat /etc/passwd",
             "sudo": false
@@ -30,12 +36,17 @@
             "cmd": "cat /etc/passwd",
             "sudo": false
         },
-        "win-winrm": {
-            "cmd": "net user",
+        "debian": {
+            "cmd": "cat /etc/passwd",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "cat /etc/passwd",
             "sudo": false
         }
     },
     "get_system_info": {
+        "description": "get system information",
         "linux": {
             "cmd": "uname -a",
             "sudo": false
@@ -47,23 +58,41 @@
         "ubuntu": {
             "cmd": "uname -a",
             "sudo": false
+        },
+        "debian": {
+            "cmd": "uname -a",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "uname -a",
+            "sudo": false
         }
     },
     "get_hostname": {
+        "description": "get the hostname",
         "linux": {
             "cmd": "cat /etc/hostname",
             "sudo": false
         },
         "windows": {
-            "cmd": null,
+            "cmd": "hostname",
             "sudo": false
         },
         "ubuntu": {
             "cmd": "cat /etc/hostname",
             "sudo": false
+        },
+        "debian": {
+            "cmd": "cat /etc/hostname",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "cat /etc/hostname",
+            "sudo": false
         }
     },
     "get_logins": {
+        "description": "get the login logs",
         "debian": {
             "cmd": "cat /var/log/auth.log",
             "sudo": true
@@ -81,14 +110,11 @@
             "sudo": true
         }
     },
-    "get_login_accepted_keys": {
+    "get_accepted_keys": {
+        "description": "get the logs of accepted public keys",
         "linux": {
             "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
             "sudo": true
-        },
-        "windows": {
-            "cmd": null,
-            "sudo": false
         },
         "ubuntu": {
             "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
@@ -97,9 +123,14 @@
         "debian": {
             "cmd": "cat /var/log/auth.log | grep \"Accepted publickey\"",
             "sudo": true
+        },
+        "centos": {
+            "cmd": "cat /var/log/secure | grep \"Accepted publickey\"",
+            "sudo": true
         }
     },
-    "get_login_failed_pw": {
+    "get_failed_pw": {
+        "description": "get the logs of failed password attempts",
         "linux": {
             "cmd": null,
             "sudo": false
@@ -121,7 +152,8 @@
             "sudo": true
         }
     },
-    "get_login_accepted_pw": {
+    "get_accepted_pw": {
+        "description": "get the logs of accepted password attempts",
         "linux": {
             "cmd": null,
             "sudo": false
@@ -137,9 +169,14 @@
         "windows": {
             "cmd": null,
             "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "cat /var/log/auth.log | grep \"Accepted password\"",
+            "sudo": true
         }
     },
-    "get_diskspace": {
+    "get_disk": {
+        "description": "get disk usage information",
         "linux": {
             "cmd": "df",
             "sudo": false
@@ -151,9 +188,18 @@
         "debian": {
             "cmd": "df",
             "sudo": false
+        },
+        "centos": {
+            "cmd": "df",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "wmic logicaldisk get size,freespace,caption",
+            "sudo": false
         }
     },
-    "get_test": {
+    "get_whoami": {
+        "description": "get the current user",
         "win-winrm": {
             "cmd": "whoami",
             "sudo": false
@@ -161,9 +207,18 @@
         "ubuntu": {
             "cmd": "whoami",
             "sudo": false
+        },
+        "debian": {
+            "cmd": "whoami",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "whoami",
+            "sudo": false
         }
     },
     "get_os": {
+        "description": "get the operating system information",
         "linux": {
             "cmd": "cat /etc/os-release",
             "sudo": false
@@ -187,6 +242,247 @@
         "ubuntu": {
             "cmd": "cat /etc/os-release",
             "sudo": true
+        }
+    },
+    "get_memory": {
+        "description": "get memory usage information",
+        "linux": {
+            "cmd": "free -h",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "free -h",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "free -h",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "free -h",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "systeminfo | findstr /C:\"Available Physical Memory\"",
+            "sudo": false
+        }
+    },
+    "get_uptime": {
+        "description": "get the system uptime",
+        "linux": {
+            "cmd": "uptime",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "uptime",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "uptime",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "uptime",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "systeminfo | find \"System Boot Time\"",
+            "sudo": false
+        }
+    },
+    "get_interfaces": {
+        "description": "get network interface information",
+        "linux": {
+            "cmd": "ip a",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "ip a",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "ip a",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "ip a",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "ipconfig",
+            "sudo": false
+        }
+    },
+    "get_connections": {
+        "description": "get network connections and listening ports",
+        "linux": {
+            "cmd": "ss -tunapl",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "ss -tunapl",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "ss -tunapl",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "ss -tunapl",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "netstat -anob",
+            "sudo": false
+        }
+    },
+    "get_services": {
+        "description": "get running services",
+        "linux": {
+            "cmd": "systemctl list-units --type=service --state=running",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "systemctl list-units --type=service --state=running",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "systemctl list-units --type=service --state=running",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "systemctl list-units --type=service --state=running",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "sc query state= all",
+            "sudo": false
+        }
+    },
+    "get_tasks": {
+        "description": "get scheduled tasks",
+        "linux": {
+            "cmd": "crontab -l",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "crontab -l",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "crontab -l",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "crontab -l",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "schtasks /query /fo LIST /v",
+            "sudo": false
+        }
+    },
+    "get_ports": {
+        "description": "get open ports",
+        "linux": {
+            "cmd": "ss -tuln",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "ss -tuln",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "ss -tuln",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "ss -tuln",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "netstat -an",
+            "sudo": false
+        }
+    },
+    "get_modules": {
+        "description": "get loaded kernel modules",
+        "linux": {
+            "cmd": "lsmod",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "lsmod",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "lsmod",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "lsmod",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "driverquery",
+            "sudo": false
+        }
+    },
+    "get_recent_files": {
+        "description": "get recently modified files",
+        "linux": {
+            "cmd": "find / -type f -mtime -7",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "find / -type f -mtime -7",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "find / -type f -mtime -7",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "find / -type f -mtime -7",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "powershell \"get-ChildItem -Path C:\\ -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt (get-Date).AddDays(-7) }\"",
+            "sudo": false
+        }
+    },
+    "get_packages": {
+        "description": "get installed packages",
+        "linux": {
+            "cmd": "dpkg -l",
+            "sudo": false
+        },
+        "ubuntu": {
+            "cmd": "dpkg -l",
+            "sudo": false
+        },
+        "debian": {
+            "cmd": "dpkg -l",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "rpm -qa",
+            "sudo": false
+        },
+        "windows": {
+            "cmd": "wmic product get name,version",
+            "sudo": false
+        }
+    },
+    "get_top_processes": {
+        "description": "get the top 10 processes by memory usage",
+        "ubuntu": {
+            "cmd": "ps aux --sort=-%mem | head -n 10",
+            "sudo": false
+        },
+        "centos": {
+            "cmd": "ps aux --sort=-%mem | head -n 10",
+            "sudo": false
         }
     }
 }

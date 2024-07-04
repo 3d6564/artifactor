@@ -3,7 +3,6 @@ import paramiko
 import socket
 import winrm
 from contextlib import closing
-from config import EnvManager
 
        
 class SSHClient:
@@ -64,31 +63,32 @@ class SSHClient:
         stdin, stdout, stderr = client.exec_command(command)
         return (stdout.read() + stderr.read()).decode()
 
-    def run_command_on_host(self, command, os_type, host, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
-        env_manager = EnvManager()
-        use_jumpbox = env_manager.get_env_var('USE_JUMPBOX').lower() in ['y']
-        use_port_forward = env_manager.get_env_var('USE_PORT_FORWARD').lower() in ['y']
-        use_jumpbox_password = env_manager.get_env_var('USE_JUMPBOX_PASSWORD').lower() in ['y']
-        use_target_password = env_manager.get_env_var('USE_TARGET_PASSWORD').lower() in ['y']
-        win_username = env_manager.get_env_var('WIN_USERNAME')
-        win_password = env_manager.get_env_var('WIN_PASSWORD')
-
+    def run_command_on_host(self, env_manager, command, os_type, host, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
         output = None
+        use_jumpbox = env_manager.env_vars['USE_JUMPBOX'].lower() in ['y']
+        use_port_forward = env_manager.env_vars['USE_PORT_FORWARD'].lower() in ['y']
+        use_target_password = env_manager.env_vars['USE_TARGET_PASSWORD'].lower() in ['y']
+        use_jumpbox_password = env_manager.env_vars['USE_JUMPBOX_PASSWORD'].lower() in ['y']
+        target_username = env_manager.env_vars['TARGET_USERNAME']
+        win_username = env_manager.env_vars['WIN_USERNAME']
+        win_password = env_manager.env_vars['WIN_PASSWORD']
 
-        if use_jumpbox_password:
-            jumpbox_password = env_manager.get_env_var('JUMPBOX_PASSWORD')
-        if not use_jumpbox_password:
-            jumpbox_key_path = env_manager.get_env_var('JUMPBOX_KEY')
         if use_target_password:
-            target_password = env_manager.get_env_var('TARGET_PASSWORD')
-        if not use_target_password:
-            target_key_path = env_manager.get_env_var('TARGET_KEY')
+            target_password = env_manager.env_vars['TARGET_PASSWORD']
+        else:
+            target_key_path = env_manager.env_vars['TARGET_KEY']
 
         try:
             if use_jumpbox:
-                jumpbox_client = self.create_ssh_client(jumpbox, 
-                                                        jumpbox_username, 
-                                                        password=jumpbox_password, 
+                jumpbox = env_manager.env_vars['JUMPBOX']
+                jumpbox_username = env_manager.env_vars['JUMPBOX_USERNAME']
+                if use_jumpbox_password:
+                    jumpbox_password = env_manager.env_vars['JUMPBOX_PASSWORD']
+                else:
+                    jumpbox_key_path = env_manager.env_vars['JUMPBOX_KEY']
+                jumpbox_client = self.create_ssh_client(jumpbox,
+                                                        jumpbox_username,
+                                                        password=jumpbox_password,
                                                         key_path=jumpbox_key_path)
                 if os_type == 'windows' or os_type == 'win-winrm':
                     if use_port_forward:
@@ -96,7 +96,10 @@ class SSHClient:
                         #print('Creating winrm proxy')
                         #winrm_session = self.create_winrm_proxy_channel(jumpbox_client, host, jumpbox)
                         #print('Proxy created...')
-                        winrm_session = winrm.Session(f'{host}', auth=(win_username, win_password), transport='ntlm')
+                        winrm_session = winrm.Session(f'{host}', 
+                                                      auth=(win_username, 
+                                                            win_password), 
+                                                      transport='ntlm')
                         print('WinRM session created...')
                         # Check if the port forwarding was successful
                         output = winrm_session.run_cmd(command).std_out.decode()
@@ -104,7 +107,9 @@ class SSHClient:
                         output = '\n'.join(line for line in output.splitlines() if line.strip())
                         #print('Result received...')
                 else:
-                    channel = self.create_proxy_channel(jumpbox_client, host, jumpbox)
+                    channel = self.create_proxy_channel(jumpbox_client, 
+                                                        host, 
+                                                        jumpbox)
                     target_client = self.create_ssh_client(host, 
                                                            target_username, 
                                                            password=target_password, 
@@ -119,7 +124,10 @@ class SSHClient:
                         #print('Creating winrm proxy')
                         #winrm_session = self.create_winrm_proxy_channel(jumpbox_client, host, jumpbox)
                         #print('Proxy created...')
-                        winrm_session = winrm.Session(f'{host}', auth=(win_username, win_password), transport='ntlm')
+                        winrm_session = winrm.Session(f'{host}', 
+                                                      auth=(win_username, 
+                                                            win_password), 
+                                                      transport='ntlm')
                         print('WinRM session created...')
                         # Check if the port forwarding was successful
                         #print(command)

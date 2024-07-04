@@ -17,7 +17,9 @@ class EnvManager:
             'TARGET_USERNAME': None,
             'TARGET_PASSWORD': None,
             'WIN_USERNAME': None,
-            'WIN_PASSWORD': None
+            'WIN_PASSWORD': None,
+            'PING_COUNT': None,
+            'PING_TIMEOUT': None
         }
         self.load_environment()
         self.check_and_create_env_file()
@@ -33,7 +35,7 @@ class EnvManager:
             open(self.env_file, 'a').close()
 
     def get_env_var(self, var_name):
-        return os.getenv(var_name)
+        return self.env_vars[var_name]
 
     def set_env_var(self, var_name, var_value):
         env_vars = dotenv_values(self.env_file)
@@ -78,4 +80,4 @@ class EnvManager:
             self.set_env_var('USE_JUMPBOX', jumpbox_use)
             print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")
         else:
-            print("\033[1;32mAll required environment variables have been initialized.\033[0m")
+            print("\033[1;32menvironment variables have been initialized.\033[0m")

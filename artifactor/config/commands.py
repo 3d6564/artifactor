@@ -3,11 +3,10 @@ import subprocess
 import re
 import shutil
 from connectors import SSHClient
-from config import EnvManager
 from .parallel_executor import ParallelExecutor
 
 
-class CommandGenerator:
+class CommandManager:
 
     def __init__(self, commands_file='commands.json'):
         self.commands_template = 'commands.json.template'
@@ -34,10 +33,12 @@ class CommandGenerator:
         with open(self.commands_file, 'w') as f:
             json.dump(self.commands, f, indent=4)
 
-    def ping_ttl(self, host):
+    def ping_ttl(self, host, env_manager):
+        ping_count = env_manager.get_env_var('PING_COUNT')
+        ping_timeout = env_manager.get_env_var('PING_TIMEOUT')
         try:
             # Execute ping command to get TTL
-            result = subprocess.run(['ping', '-n', '1', host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(['ping', '-n', str(ping_count), '-w', str(ping_timeout), host], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             if result.returncode == 0:
                 # Get TTL from response using regex
                 ttl_search = re.search(r'TTL=(\d+)', result.stdout)
@@ -52,33 +53,27 @@ class CommandGenerator:
                 else:
                     return {'os_type': 'unknown', 'ttl': 'unknown'}
             else:
-                return f'Ping failed: {result.stderr}'
+                return {'os_type': {result.stderr}, 'ttl': 'unknown'}
         except Exception as e:
             return f'An error occurred: {e}'
 
-    def execute_commands(self, host_dict, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_key_path=None, target_key_path=None, jumpbox_password=None, target_password=None):
+    def execute_commands(self, env_manager, host_dict):
         """Execute the specified command on all hosts in parallel."""
         output = self.parallel_executor.execute_commands_in_parallel(
             self.ssh_client.run_command_on_host,
-            host_dict,
-            jumpbox,
-            jumpbox_username=jumpbox_username,
-            target_username=target_username,
-            jumpbox_password=jumpbox_password,
-            jumpbox_key_path=jumpbox_key_path,
-            target_password=target_password,
-            target_key_path=target_key_path
+            env_manager,
+            host_dict
         )
         return output
 
-    def detect_os(self, hosts, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def detect_os(self, env_manager, hosts):
         """
         Detect the OS type of each host using ping TTL values and get_os function
         
         """
         print("Detecting OS's...")
         self.commands = self.load_commands()
-        host_dict = {host: self.ping_ttl(host) for host in hosts}
+        host_dict = {host: self.ping_ttl(host, env_manager) for host in hosts}
         known_dict = {}
         unknown_dict = {}
 
@@ -93,7 +88,7 @@ class CommandGenerator:
                 values["os_type"] = os_type
                 unknown_dict[host] = values
 
-        output = self.execute_commands(known_dict)
+        output = self.execute_commands(env_manager, known_dict)
         
         for key, value in output.items():
             os_type = host_dict[key].get('os_type')
@@ -116,8 +111,8 @@ class CommandGenerator:
                 print(f"Unknown OS detected for {key}.")
         return host_dict
 
-    def run_command(self, command_name, hosts, jumpbox, jumpbox_username, target_username, jumpbox_key_path, target_key_path):
-        host_dict = self.detect_os(hosts)
+    def run_command(self, env_manager, command_name, hosts):
+        host_dict = self.detect_os(env_manager, hosts)
 
         for host, values in host_dict.items():
             try:
@@ -134,9 +129,9 @@ class CommandGenerator:
                 print(f"Could not determine the OS of {host}. Skipping...")
                 continue
 
-        results = self.execute_commands(host_dict)
+        results = self.execute_commands(env_manager, host_dict)
         return results
-
+    
     def modify_commands(self, command_name, commands):
         if command_name in self.commands:
             print(f"Updating existing command '{command_name}' with {commands}")
@@ -151,4 +146,3 @@ class CommandGenerator:
             if distro in command:
                 return True
         return False
-    

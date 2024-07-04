@@ -3,11 +3,11 @@ import random
 import types
 from cmd import Cmd
 from termcolor import colored
-from commands import CommandGenerator
+from utils import ExitApplication, common_help
 
 
 def print_ascii_art():
-     fonts = ['3-d','alligator','banner','big','bigchief',
+     fonts = ['3-d','banner','big','bigchief',
               'catwalk','coinstak','colossal',
               'doom','linux','lockergnome',
               'nancyj','ntgreek','peaks','rowancap','shadow']
@@ -29,90 +29,257 @@ def print_ascii_art():
 
 class ConfigureCmd(Cmd):
      prompt = 'artc-configure> '
-     intro = 'Configuration menu. Type ? to list options'
 
-     def __init__(self, env_manager):
+     def __init__(self, env_manager, cmd_manager, host_manager, arg):
           super().__init__()
+          self.arg = arg
           self.env_manager = env_manager
-          #self.settings = settings
-          self.command_generator = CommandGenerator()
-          print(f"\nJumpbox Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX')})")
-          print(f"Port Forward Usage (current: {self.env_manager.get_env_var('USE_PORT_FORWARD')})")
-          print(f"Jumpbox Password Usage (current: {self.env_manager.get_env_var('USE_JUMPBOX_PASSWORD')})")
-          print(f"Target Password Usage (current: {self.env_manager.get_env_var('USE_TARGET_PASSWORD')})\n")
+          self.cmd_manager = cmd_manager
+          self.host_manager = host_manager
 
-     def do_modify_commands(self, arg):
-          'Modify commands: modify_commands'
-          modify_commands_menu(self.command_generator)
-
-     def do_load_commands(self, arg):
-          'Load commands: load_commands'
-          self.command_generator.load_commands()
-          print("Commands loaded.")
-
-     def do_save_commands(self, arg):
-          'Save commands: save_commands'
-          self.command_generator.save_commands()
-          print("Commands saved.")
-
-     def do_jumpbox_usage(self, arg):
-          'Modify Jumpbox usage: jumpbox_usage'
-          self.env_manager.set_jumpbox_use()
-          current_jumpbox_state = self.env_manager.get_or_prompt_env_var('USE_JUMPBOX', 'False')
-          print(f"Jumpbox usage set to {current_jumpbox_state}")
-
-     def do_ping_count(self, arg):
-          'Change ping count: ping_count <value>'
-          if arg.isdigit():
-               self.settings['ping_count'] = int(arg)
-               print(f"Ping count updated to {self.settings['ping_count']}")
+     def do_hosts(self, arg):
+          'Hosts submenu: hosts [<arg>]'
+          hosts_cmd = HostsCmd(self.host_manager, arg)
+          if arg:
+               hosts_cmd.onecmd(arg)
           else:
-               print("Invalid input. Please enter a number.")
+               hosts_cmd.cmdloop()
 
-     def do_ping_timeout(self, arg):
-          'Change ping timeout: ping_timeout <value>'
-          if arg.isdigit():
-               self.settings['ping_timeout'] = int(arg)
-               print(f"Ping timeout updated to {self.settings['ping_timeout']}")
+     def do_commands(self, arg):
+          'Commands submenu: commands [<arg>]'
+          commands_cmd = CommandsCmd(self.cmd_manager, arg)
+          if arg:
+               commands_cmd.onecmd(arg)
           else:
-               print("Invalid input. Please enter a number.")
+               commands_cmd.cmdloop()
+
+     def do_environment(self, arg):
+          'Environment submenu: environment [<arg>]'
+          env_cmd = EnvironmentCmd(self.env_manager, arg)
+          if arg:
+               env_cmd.onecmd(arg)
+          else:
+               env_cmd.cmdloop()
      
      def do_back(self, arg):
           'Return to the main menu: back'
           return True
      
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
      def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
+        common_help(self, arg)
 
-class RunMenuCmd(Cmd):
-     prompt = 'artc-run> '
-     intro = 'Run menu. Type ? to list options'
 
-     def __init__(self, command_generator):
+class HostsCmd(Cmd):
+     prompt = 'artc-configure-hosts> '
+
+     def __init__(self, host_manager, arg):
           super().__init__()
-          self.command_generator = command_generator
+          self.arg = arg
+          self.host_manager = host_manager
+
+     def do_add(self, arg):
+          'Add a host and save to host file: add <hostname_or_ip>'
+          new_host = arg.strip()
+          if new_host == "":
+               print(f"Argument was empty.")
+          elif self.host_manager.add_host(new_host):
+               print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
+          else:
+               print(f"Host {arg} is already in the list.")
+     
+     def do_back(self, arg):
+          'Return to the main menu: back'
+          return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
+     def do_help(self, arg):
+          common_help(self, arg)
+
+class CommandsCmd(Cmd):
+     prompt = 'artc-configure-commands> '
+
+     def __init__(self, cmd_manager, arg):
+          super().__init__()
+          self.arg = arg
+          self.cmd_manager = cmd_manager
+
+     def do_add(self, arg):
+          'Add or update a command with a series of menus: add'
+
+          command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
+          if command_name == 'exit' or not command_name:
+               return
+          
+          description = input("Enter the command description: ").strip()
+          if not description:
+               print("Description cannot be empty. Please provide a valid description.")
+               return
+          
+          commands = {}
+          while True:
+               distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
+                              "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
+                              "Enter the distribution name (or type 'done' to finish): \033[0m").strip().lower()
+               if distro == 'done' or not distro:
+                    break
+               if distro in commands:
+                    print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
+                    continue
+               if self.cmd_manager.distribution_exists(distro):
+                    print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
+               if not self.cmd_manager.distribution_exists(distro):
+                    confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
+                    if confirm == 'n':
+                         continue
+
+               command = input(f"Enter the command for {distro}: ")
+               use_sudo = input(f"Does this command require sudo? (yes/no): ").strip().lower() == "yes"
+               confirm = input(f"\033[1;31mYou entered '{distro}' with the command '{command}' with the command name '{command_name}'.\n"
+                              "Is that correct? (y/n):\033[0m ").lower()
+               if confirm.lower() in ['yes', 'y']:
+                    if command == 'null' or command == '':
+                         command = None
+                    commands[distro] = {"cmd": command, "sudo": use_sudo}
+
+                    print(f"\033[1;30mCommand '{command_name}' stored for '{distro}' with the command '{command}'. It will be written\n"
+                         "to the file when 'done'.\033[0m")
+
+          if commands:
+               command_entry = {"description": description}
+               command_entry.update(commands)
+               self.cmd_manager.modify_commands(command_name, command_entry)
+               print(f"Command '{command_name}' added/updated successfully.")
+               return
+          else:
+               print("Invalid option. No command added.")
+               return
+
+     def do_copy(self, arg):
+          'Copy a command from a distribution: copy'
+          while True:
+               command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
+               if command_name.lower() == 'back':
+                    break
+               if command_name not in self.cmd_manager.commands:
+                    print(f"Command '{command_name}' does not exist.")
+                    continue
+
+               src_distro = input("Enter the source distribution: ")
+               if src_distro not in self.cmd_manager.commands[command_name]:
+                    print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
+                    continue
+
+               dest_distro = input("Enter the destination distribution: ")
+               self.cmd_manager.commands[command_name][dest_distro] = self.cmd_manager.commands[command_name][src_distro]
+               self.cmd_manager.save_commands()
+               print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
+               break
+
+     def do_load(self, arg):
+          'Load commands: load_commands'
+          self.cmd_manager.load_commands()
+          print("Commands loaded.")
+
+     def do_save(self, arg):
+          'Save commands: save_commands'
+          self.cmd_manager.save_commands()
+          print("Commands saved.")
+
+     def do_back(self, arg):
+          'Return to the main menu: back'
+          return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
+     def do_help(self, arg):
+          common_help(self, arg)
+
+class EnvironmentCmd(Cmd):
+     prompt = 'artc-configure-environment> '
+
+     def __init__(self, env_manager, arg):
+          super().__init__()
+          self.arg = arg
+          self.env_manager = env_manager
+
+     def do_set(self, arg):
+          'Modify environment variables: set <variable name> <value>'
+          var, value = arg.split(' ', 1)
+          if value.isdigit():
+               print(f'old value: {self.env_manager.get_env_var(var)}')
+               self.env_manager.set_env_var(var, value)
+               print(f'new value: {self.env_manager.get_env_var(var)}')
+          else:
+            print("Invalid input. Please enter a number.")
+
+     def do_show(self, arg):
+          'Show existing environment configuration: show'
+          print("\n\033[1;31mconfiguration:\033[0m")
+          for var in self.env_manager.env_vars:
+               print(f"    {var}={self.env_manager.get_env_var(var)}")
+          print()
+     
+     def do_back(self, arg):
+          'Return to the main menu: back'
+          return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
+
+     def do_help(self, arg):
+          common_help(self, arg)
+
+class RunCmd(Cmd):
+     prompt = 'artc-run> '
+
+     def __init__(self, env_manager, cmd_manager, host_manager, arg):
+          'Run a command on hosts loaded to application: run [<command_name>]'
+          super().__init__()
+          self.arg = arg
+          self.cmd_manager = cmd_manager
+          self.env_manager = env_manager
+          self.host_manager = host_manager
           self.selected_command = None
-          self.commands = list(self.command_generator.commands.keys())
+          self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
 
      def _create_dynamic_commands(self):
+          'This generates a dynamic list of commands to run: none'
+          def create_method(cmd, description):
+            def dynamic_method(self, arg):
+                'Dynamically generated method for each command'
+                self.selected_command = cmd
+                self.cmd_manager.run_command(
+                    self.env_manager,
+                    self.selected_command,
+                    self.host_manager.hosts
+                )
+                return True
+            dynamic_method.__name__ = f'do_{cmd}'
+            dynamic_method.__doc__ = f'{cmd}: {description}'
+            return dynamic_method
+
           for command in self.commands:
-               def dynamic_method(self, arg, cmd=command):
-                    'Dynamically generated method for each command'
-                    self.selected_command = cmd
-                    return True  # Exit the loop after selection
-               
-               dynamic_method.__name__ = f'do_{command}'
-               dynamic_method.__doc__ = f'Run the {command} command'
-               setattr(self, dynamic_method.__name__, types.MethodType(dynamic_method, self))
+               description = self.cmd_manager.commands[command].get('description', 'No description available')
+               method = create_method(command, description)
+               setattr(self, method.__name__, types.MethodType(method, self))
 
      def do_list(self, arg):
           'List commands to run: list'
-          commands = list(self.command_generator.commands.keys())
+          commands = list(self.cmd_manager.commands.keys())
           if commands:
                for idx, command in enumerate(commands, 1):
-                    print(f"{idx}. {command}")
+                    print(f"{command}")
           else:
                print("No commands available.")
                return
@@ -120,100 +287,10 @@ class RunMenuCmd(Cmd):
      def do_back(self, arg):
           'Return to the main menu: back'
           return True
+     
+     def do_exit(self, arg):
+          'Exit the application: exit'
+          raise ExitApplication
 
      def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
-
-class ModifyCommandsCmd(Cmd):
-     prompt = 'artc-modify_commands> '
-     intro = 'Modify Commands menu. Type ? to list options'
-
-     def __init__(self, command_generator):
-          super().__init__()
-          self.command_generator = command_generator
-
-     def do_add(self, arg):
-          'Add or update a command: add'
-          add_commands(self.command_generator)
-
-     def do_copy(self, arg):
-          'Copy a command from a distribution: copy'
-          copy_command_menu(self.command_generator)
-
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          return True
-
-     def do_help(self, arg):
-          'List available commands: help'
-          Cmd.do_help(self, arg)
-
-def copy_command_menu(command_generator):
-     while True:
-          command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
-          if command_name.lower() == 'back':
-               break
-          if command_name not in command_generator.commands:
-               print(f"Command '{command_name}' does not exist.")
-               continue
-
-          src_distro = input("Enter the source distribution: ")
-          if src_distro not in command_generator.commands[command_name]:
-               print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
-               continue
-
-          dest_distro = input("Enter the destination distribution: ")
-          command_generator.commands[command_name][dest_distro] = command_generator.commands[command_name][src_distro]
-          command_generator.save_commands()
-          print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
-          break
-
-def modify_commands_menu(command_generator):
-     modify_cmd = ModifyCommandsCmd(command_generator)
-     modify_cmd.cmdloop()
-
-def add_commands(command_generator):
-     """
-     This will go through a series of menus to allow the user to add commands for
-     multiple distributions.
-     """
-     command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
-     if command_name == 'exit' or not command_name:
-          return
-     commands = {}
-     while True:
-          distro = input("\033[32mArtifactor will look in the /etc/os-release ID= field for the os. \n"
-                         "Common entries for this are ubuntu, debian, fedora, centos, rhel, and arch. \n"
-                         "Enter the distribution name (or type 'done' to finish): \033[0m").strip().lower()
-          if distro == 'done' or not distro:
-               break
-          if distro in commands:
-               print(f"\033[1;32mDistribution '{distro}' already added to this command.\033[0m")
-               continue
-          if command_generator.distribution_exists(distro):
-               print(f"\033[1;32mDistribution '{distro}' already exists in the commands file.\033[0m")
-          if not command_generator.distribution_exists(distro):
-               confirm = input(f"\033[1;31mDistribution '{distro}' is a new distribution. Is that correct? (y/n): \033[0m").lower()
-               if confirm == 'n':
-                    continue
-
-          command = input(f"Enter the command for {distro}: ")
-          use_sudo = input(f"Does this command require sudo? (yes/no): ").strip().lower() == "yes"
-          confirm = input(f"\033[1;31mYou entered '{distro}' with the command '{command}' with the command name '{command_name}'.\n"
-                          "Is that correct? (y/n):\033[0m ").lower()
-          if confirm.lower() in ['yes', 'y']:
-               if command == 'null' or command == '':
-                    command = None
-               commands[distro] = {"cmd": command, "sudo": use_sudo}
-
-               print(f"\033[1;30mCommand '{command_name}' stored for '{distro}' with the command '{command}'. It will be written\n"
-                    "to the file when 'done'.\033[0m")
-
-     if commands:
-          command_generator.modify_commands(command_name, commands)
-          print(f"Command '{command_name}' added/updated successfully.")
-          return
-     else:
-          print("Invalid option. No command added.")
-          return
+        common_help(self, arg, run_case=True)
