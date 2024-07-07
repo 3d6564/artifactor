@@ -9,16 +9,17 @@ from contextlib import closing
        
 class SSHClient:
 
-    def create_ssh_client(self, ssh_host, ssh_port, ssh_username, ssh_password=None, ssh_key_path=None, remote_bind_address=[]):
+    def create_ssh_forwarder(self, ssh_host, ssh_port, ssh_username, ssh_password=None, ssh_key_path=None, remote_bind_address=[]):
         tunnel = SSHTunnelForwarder(
             (ssh_host, ssh_port),
             ssh_username=ssh_username,
             ssh_password=ssh_password,
             ssh_pkey=ssh_key_path,
             remote_bind_addresses=remote_bind_address,
-            local_bind_address=('localhost', 0)  # Let the OS pick a random local port
+            local_bind_address=('localhost', 0)  # OS picks port when 0
         )
         tunnel.start()
+        # The below should be logged but doesn't need output to user
         #print(f"Local bind ports: {tunnel.local_bind_ports}")
         return tunnel
     
@@ -26,14 +27,6 @@ class SSHClient:
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
             sock.settimeout(1)
             return sock.connect_ex((host, port)) == 0
-
-    """     
-    def create_proxy_channel(self, jumpbox_client, host, jumpbox):
-        jumpbox_transport = jumpbox_client.get_transport()
-        dest_addr = (host, 22)
-        local_addr = (jumpbox, 22)
-        return jumpbox_transport.open_channel("direct-tcpip", dest_addr, local_addr)
-    """
 
     def create_winrm_session(self, host, port, username, password):
         local_port = port  # Assuming the first local bind port is for WinRM
@@ -44,14 +37,14 @@ class SSHClient:
         )
         return winrm_session
     
-    def execute_ssh_command(self, ssh_host, ssh_port, ssh_username, ssh_pkey, command):
+    def execute_ssh_command(self, ssh_host, ssh_port, ssh_username, ssh_key_path, command):
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh_client.connect(
             hostname=ssh_host,
             port=ssh_port,
             username=ssh_username,
-            key_filename=ssh_pkey
+            key_filename=ssh_key_path
         )
 
         stdin, stdout, stderr = ssh_client.exec_command(command)
@@ -86,7 +79,7 @@ class SSHClient:
                     jumpbox_key_path = env_manager.env_vars['JUMPBOX_KEY']
                 print(f"Using jumpbox to connect to {host}...")
                 # This is designed for JUMPBOX to be ONLY linux for now
-                tunnel = self.create_ssh_client(ssh_host=jumpbox,
+                tunnel = self.create_ssh_forwarder(ssh_host=jumpbox,
                                                 ssh_port=22,
                                                 ssh_username=jumpbox_username,
                                                 ssh_password=jumpbox_password,
