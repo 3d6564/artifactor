@@ -2,71 +2,69 @@ import os
 import paramiko
 import socket
 import winrm
+import subprocess
+from sshtunnel import SSHTunnelForwarder
 from contextlib import closing
 
        
 class SSHClient:
 
-    def create_ssh_client(self, hostname, username, password=None, key_path=None, proxy_command=None):
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        connect_args = {'hostname': hostname, 'username': username}
-    
-        if proxy_command:
-            if password:
-                client.connect(**connect_args, password=password, sock=proxy_command, look_for_keys=False)
-            elif key_path:
-                client.connect(**connect_args, key_filename=key_path, sock=proxy_command, look_for_keys=False)
-            else:
-                raise ValueError("Either password or key_path must be provided for authentication with proxy_command")
-        else:
-            if password:
-                client.connect(**connect_args, password=password, look_for_keys=False)
-            elif key_path:
-                client.connect(**connect_args, key_filename=key_path, look_for_keys=False)
-            else:
-                raise ValueError("Either password or key_path must be provided for authentication")
-        
-        return client
+    def create_ssh_client(self, ssh_host, ssh_port, ssh_username, ssh_password=None, ssh_key_path=None, remote_bind_address=[]):
+        tunnel = SSHTunnelForwarder(
+            (ssh_host, ssh_port),
+            ssh_username=ssh_username,
+            ssh_password=ssh_password,
+            ssh_pkey=ssh_key_path,
+            remote_bind_addresses=remote_bind_address,
+            local_bind_address=('localhost', 0)  # Let the OS pick a random local port
+        )
+        tunnel.start()
+        #print(f"Local bind ports: {tunnel.local_bind_ports}")
+        return tunnel
     
     def is_port_open(self, host, port):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
             sock.settimeout(1)
             return sock.connect_ex((host, port)) == 0
 
+    """     
     def create_proxy_channel(self, jumpbox_client, host, jumpbox):
         jumpbox_transport = jumpbox_client.get_transport()
         dest_addr = (host, 22)
         local_addr = (jumpbox, 22)
         return jumpbox_transport.open_channel("direct-tcpip", dest_addr, local_addr)
-
-    def create_winrm_proxy_channel(self, jumpbox_client, host, local_addr):
-        jumpbox_transport = jumpbox_client.get_transport()
-        dest_addr = (host, 5985)
-        local_addr = (local_addr, 5985)
-        return jumpbox_transport.open_channel("direct-tcpip", dest_addr, local_addr)
     """
-    def create_port_forward(self, jumpbox_client, host, win_username, win_password):
-        jumpbox_transport = jumpbox_client.get_transport()
-        local_addr = '127.0.0.1'
-        local_port = 5985
-        host_port = 5985
 
-        jumpbox_transport.request_port_forward(local_addr, local_port, host, host_port)
-        if self.is_port_open(local_addr, local_port):
-                        print(f"Port forwarding established from local {local_addr} to remote {host}")
-        # Create WinRM session using forwarded port
-        
+    def create_winrm_session(self, host, port, username, password):
+        local_port = port  # Assuming the first local bind port is for WinRM
+        winrm_session = winrm.Session(
+            f'http://{host}:{local_port}/wsman',
+            auth=(username, password),
+            transport='ntlm'
+        )
         return winrm_session
-    """
-    def execute_command(self, client, command):
-        stdin, stdout, stderr = client.exec_command(command)
-        return (stdout.read() + stderr.read()).decode()
+    
+    def execute_ssh_command(self, ssh_host, ssh_port, ssh_username, ssh_pkey, command):
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(
+            hostname=ssh_host,
+            port=ssh_port,
+            username=ssh_username,
+            key_filename=ssh_pkey
+        )
+
+        stdin, stdout, stderr = ssh_client.exec_command(command)
+        output = stdout.read().decode() if stdout else None
+        error = stderr.read().decode() if stderr else None
+
+        ssh_client.close()
+        return output, error
 
     def run_command_on_host(self, env_manager, command, os_type, host, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
         output = None
         use_jumpbox = env_manager.env_vars['USE_JUMPBOX'].lower() in ['y']
-        use_port_forward = env_manager.env_vars['USE_PORT_FORWARD'].lower() in ['y']
+        
         use_target_password = env_manager.env_vars['USE_TARGET_PASSWORD'].lower() in ['y']
         use_jumpbox_password = env_manager.env_vars['USE_JUMPBOX_PASSWORD'].lower() in ['y']
         target_username = env_manager.env_vars['TARGET_USERNAME']
@@ -86,70 +84,54 @@ class SSHClient:
                     jumpbox_password = env_manager.env_vars['JUMPBOX_PASSWORD']
                 else:
                     jumpbox_key_path = env_manager.env_vars['JUMPBOX_KEY']
-                jumpbox_client = self.create_ssh_client(jumpbox,
-                                                        jumpbox_username,
-                                                        password=jumpbox_password,
-                                                        key_path=jumpbox_key_path)
-                if os_type == 'windows' or os_type == 'win-winrm':
-                    if use_port_forward:
-                        #local_addr = '127.0.0.1'
-                        #print('Creating winrm proxy')
-                        #winrm_session = self.create_winrm_proxy_channel(jumpbox_client, host, jumpbox)
-                        #print('Proxy created...')
-                        winrm_session = winrm.Session(f'{host}', 
-                                                      auth=(win_username, 
-                                                            win_password), 
-                                                      transport='ntlm')
-                        print('WinRM session created...')
-                        # Check if the port forwarding was successful
-                        output = winrm_session.run_cmd(command).std_out.decode()
-                        # Clean empty lines
-                        output = '\n'.join(line for line in output.splitlines() if line.strip())
-                        #print('Result received...')
+                print(f"Using jumpbox to connect to {host}...")
+                # This is designed for JUMPBOX to be ONLY linux for now
+                tunnel = self.create_ssh_client(ssh_host=jumpbox,
+                                                ssh_port=22,
+                                                ssh_username=jumpbox_username,
+                                                ssh_password=jumpbox_password,
+                                                ssh_key_path=jumpbox_key_path,
+                                                remote_bind_address=((host, 5985 if os_type in ('windows', 'win-winrm') else 22),))
+                if os_type in ('windows', 'win-winrm'):
+                    print('Creating WinRM session...')
+                    winrm_session = self.create_winrm_session('localhost',
+                                                              tunnel.local_bind_ports[0],
+                                                              win_username,
+                                                              win_password)
+                    print('WinRM session established...')
+                    result = winrm_session.run_cmd(command)
+                    output = result.std_out.decode('utf-8') if result.std_out else None
+                    error = result.std_err.decode('utf-8') if result.std_err else None
                 else:
-                    channel = self.create_proxy_channel(jumpbox_client, 
-                                                        host, 
-                                                        jumpbox)
-                    target_client = self.create_ssh_client(host, 
-                                                           target_username, 
-                                                           password=target_password, 
-                                                           key_path=target_key_path, 
-                                                           proxy_command=channel)
-                    print('SSH session created...')
-                    output = self.execute_command(target_client, command)
+                    print('Creating SSH session...')
+                    output, error = self.execute_ssh_command(host,
+                                                             22,
+                                                             target_username,
+                                                             target_key_path,
+                                                             command)
+                tunnel.stop()
             else:
-                if os_type == 'windows' or os_type == 'win-winrm':
-                    if use_port_forward:
-                        #local_addr = '127.0.0.1'
-                        #print('Creating winrm proxy')
-                        #winrm_session = self.create_winrm_proxy_channel(jumpbox_client, host, jumpbox)
-                        #print('Proxy created...')
-                        winrm_session = winrm.Session(f'{host}', 
-                                                      auth=(win_username, 
-                                                            win_password), 
-                                                      transport='ntlm')
-                        print('WinRM session created...')
-                        # Check if the port forwarding was successful
-                        #print(command)
-                        output = winrm_session.run_cmd(command).std_out.decode()
-                        print(f"WinRM results received for {host} and command {command}...")
+                print(f"Using direction connection to connect to {host}...")
+                if os_type in ('windows', 'win-winrm'):
+                    print('Creating WinRM session...')
+                    winrm_session = self.create_winrm_session(host,
+                                                              5985,
+                                                              win_username,
+                                                              win_password)
+                    print('WinRM session established...')
+                    result = winrm_session.run_cmd(command)
+                    output = result.std_out.decode('utf-8') if result.std_out else None
+                    error = result.std_err.decode('utf-8') if result.std_err else None
                 else:
-                    target_client = self.create_ssh_client(host, 
-                                                           target_username, 
-                                                           password=target_password, 
-                                                           key_path=target_key_path)
-                    print('SSH session created...')
-                    output = self.execute_command(target_client, command)
-            try:
-                target_client.close()
-            except:
-                print(f"No target client to close for {host}")
-            if use_jumpbox:
-                try:
-                    jumpbox_client.close()
-                except:
-                    print('Maybe no jumpbox was configured...')
-
+                    print('Creating SSH session...')
+                    output, error = self.execute_ssh_command(host,
+                                                             22,
+                                                             target_username,
+                                                             target_key_path,
+                                                             command)
+                if error:
+                    print(f'Error: {error}')
             return host, output
         except Exception as e:
-            return host, str(e)
+            print(f"Error: {e}")
+            return str(e)

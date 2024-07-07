@@ -34,7 +34,7 @@ class ParallelExecutor:
                 except Exception as e:
                     results[host] = str(e)
                     self.logger.write_output(log_name, f"Error for {host}:\n{e}")
-                    print(f"Host {host} error written to {log_name}")
+                    print(f"\033[1;33mHost {host} error written to {log_name}\033[0m")
         return results
     
     def shutdown_executor(self):
