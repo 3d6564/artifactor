@@ -80,13 +80,13 @@ class SSHClient:
                 print(f"Using jumpbox to connect to {host}...")
                 # This is designed for JUMPBOX to be ONLY linux for now
                 tunnel = self.create_ssh_forwarder(ssh_host=jumpbox,
-                                                ssh_port=22,
-                                                ssh_username=jumpbox_username,
-                                                ssh_password=jumpbox_password,
-                                                ssh_key_path=jumpbox_key_path,
-                                                remote_bind_address=((host, 5985 if os_type in ('windows', 'win-winrm') else 22),))
+                                                   ssh_port=22,
+                                                   ssh_username=jumpbox_username,
+                                                   ssh_password=jumpbox_password,
+                                                   ssh_key_path=jumpbox_key_path,
+                                                   remote_bind_address=((host, 5985 if os_type in ('windows', 'win-winrm') else 22),))
                 if os_type in ('windows', 'win-winrm'):
-                    print('Creating WinRM session...')
+                    print(f'Creating WinRM session for {host}...')
                     winrm_session = self.create_winrm_session('localhost',
                                                               tunnel.local_bind_ports[0],
                                                               win_username,
@@ -96,9 +96,9 @@ class SSHClient:
                     output = result.std_out.decode('utf-8') if result.std_out else None
                     error = result.std_err.decode('utf-8') if result.std_err else None
                 else:
-                    print('Creating SSH session...')
-                    output, error = self.execute_ssh_command(host,
-                                                             22,
+                    print(f'Creating SSH session for {host}...')
+                    output, error = self.execute_ssh_command('localhost',
+                                                             tunnel.local_bind_ports[0],
                                                              target_username,
                                                              target_key_path,
                                                              command)
