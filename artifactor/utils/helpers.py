@@ -1,3 +1,7 @@
+"""
+This function helps build the help/? in the application. All menus should use the below
+to maintain a consistent help output.
+"""
 def common_help(instance, arg, run_case=False):
     '''List available menu commands and usage: help [<arg>]'''
     if arg:

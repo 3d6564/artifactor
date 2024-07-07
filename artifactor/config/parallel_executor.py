@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import Logger
@@ -6,7 +5,6 @@ from utils import Logger
 class ParallelExecutor:
     def __init__(self):
         self.logger = Logger()
-    
 
     def execute_commands_in_parallel(self, command_func, env_manager, host_list):
         if not host_list:

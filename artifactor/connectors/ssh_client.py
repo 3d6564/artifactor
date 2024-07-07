@@ -1,8 +1,6 @@
-import os
 import paramiko
 import socket
 import winrm
-import subprocess
 from sshtunnel import SSHTunnelForwarder
 from contextlib import closing
 
