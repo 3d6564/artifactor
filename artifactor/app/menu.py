@@ -242,11 +242,12 @@ class EnvironmentCmd(Cmd):
 class RunCmd(Cmd):
      prompt = 'artc-run> '
 
-     def __init__(self, env_manager, cmd_manager, host_manager, arg):
+     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
           self.arg = arg
           self.cmd_manager = cmd_manager
+          self.cmd_executor = cmd_executor
           self.env_manager = env_manager
           self.host_manager = host_manager
           self.selected_command = None
@@ -259,7 +260,7 @@ class RunCmd(Cmd):
             def dynamic_method(self, arg):
                 'Dynamically generated method for each command'
                 self.selected_command = cmd
-                self.cmd_manager.run_command(
+                self.cmd_executor.run_command(
                     self.env_manager,
                     self.selected_command,
                     self.host_manager.hosts

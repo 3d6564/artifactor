@@ -1,6 +1,6 @@
 from cmd import Cmd
 from .menu import ConfigureCmd, RunCmd
-from config import EnvManager, HostManager, CommandManager
+from config import EnvManager, HostManager, CommandManager, CommandExecutor
 from utils import ExitApplication, common_help
 
 
@@ -17,6 +17,7 @@ class Artifactor(Cmd):
         self.env_manager = EnvManager()
         self.host_manager = HostManager()
         self.cmd_manager = CommandManager()
+        self.cmd_executor = CommandExecutor()
         self.env_manager.initialize_env()
         if self.host_manager.hosts:
             print("\033[1;32mhosts have been initialized.\033[0m")
@@ -49,6 +50,7 @@ class Artifactor(Cmd):
         'Run a command on hosts loaded to application: run [<command_name>]'     
         run_cmd = RunCmd(self.env_manager, 
                          self.cmd_manager,
+                         self.cmd_executor,
                          self.host_manager,
                          arg)
         if arg and self.host_manager.hosts:

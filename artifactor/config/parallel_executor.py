@@ -1,6 +1,6 @@
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from utils import Logger
+from utils import Logger, clean_results
 
 class ParallelExecutor:
     def __init__(self):
@@ -26,7 +26,7 @@ class ParallelExecutor:
                 log_name = self.logger.generate_log_name(host, command_name)
                 try:
                     host, result = future.result()
-                    results[host] = result
+                    results[host] = clean_results(result)
                     self.logger.write_output(log_name, result)
                     print(f"\033[1;32mHost {host} results written to {log_name}\033[0m")
                 except Exception as e:

@@ -44,3 +44,9 @@ def common_help(instance, arg, run_case=False):
                 description = instance.cmd_manager.commands[command_name].get('description', 'No description available')
                 print(f"    {command_name.ljust(25)} {description.lower()}")
         print()
+
+def clean_results(result):
+    """ This removes white space in the results"""
+    lines = result.splitlines()
+    cleaned_lines = [line for line in lines if line.strip()]
+    return "\n".join(cleaned_lines)

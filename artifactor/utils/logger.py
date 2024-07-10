@@ -14,5 +14,5 @@ class Logger:
 
     def write_output(self, file_path, text):
         self.check_and_create_directory(os.path.dirname(file_path))
-        with open(file_path, 'a') as f:
-            f.write(text + '\n')
+        with open(file_path, 'w', newline='') as f:
+            f.write(text)
