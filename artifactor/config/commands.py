@@ -72,15 +72,6 @@ class CommandExecutor:
         unknown_dict = {}
 
         for host, values in host_dict.items():
-            # try:
-            #     os_type = values["os_type"]
-            #     values["command"] = self.commands.get(command_name).get(os_type).get("cmd")
-            #     values["command_name"] = command_name
-            #     known_dict[host] = values
-            # except:
-            #     os_type = 'unknown'
-            #     values["os_type"] = os_type
-            #     unknown_dict[host] = values
             try:
                 values["command"] = self.commands.get(command_name).get(values["os_type"]).get("cmd")
                 known_dict[host] = values
