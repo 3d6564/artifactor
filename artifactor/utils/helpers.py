@@ -45,6 +45,10 @@ def common_help(instance, arg, run_case=False):
                 print(f"    {command_name.ljust(25)} {description.lower()}")
         print()
 
+"""
+This function helps clean the results of output of whitespace. This should be considered
+when making later changes to integrate IOC checking.
+"""
 def clean_results(result):
     """ This removes white space in the results"""
     lines = result.splitlines()

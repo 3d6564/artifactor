@@ -1,12 +1,14 @@
 from cmd import Cmd
 from .menu import ConfigureCmd, RunCmd
 from config import EnvManager, HostManager, CommandManager, CommandExecutor
-from utils import ExitApplication, common_help
+from utils import ExitApplication, Logger, common_help
 
 
 class Artifactor(Cmd):
     prompt = 'artc> '
     intro = '\ntype ? or help to list options'
+    logger = Logger()
+    log_action = logger.log_action
 
     def __init__(self):
         super().__init__()
@@ -24,6 +26,7 @@ class Artifactor(Cmd):
         if self.cmd_manager.commands:
             print("\033[1;32mcommands have been initialized.\033[0m")
 
+    @log_action
     def do_show(self, arg):
         'Show existing environment configuration: show'
         print("\n\033[1;31mconfiguration:\033[0m")
@@ -46,6 +49,7 @@ class Artifactor(Cmd):
         else:
             print("Invalid option. Nothing loaded.")
 
+    @log_action
     def do_run(self, arg):
         'Run a command on hosts loaded to application: run [<command_name>]'     
         run_cmd = RunCmd(self.env_manager, 
@@ -79,6 +83,7 @@ class Artifactor(Cmd):
         for host in hosts:
             print(f"{host}: {self.cmd_manager.ping_ttl(host)}")
 
+    @log_action
     def do_exit(self, arg):
         'Exit the application: exit'
         raise ExitApplication

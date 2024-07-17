@@ -23,7 +23,7 @@ class ParallelExecutor:
             }
             for future in as_completed(future_to_host):
                 host, command_name = future_to_host[future]
-                log_name = self.logger.generate_log_name(host, command_name)
+                log_name = self.logger.generate_host_cmd_log(host, command_name)
                 try:
                     host, result = future.result()
                     results[host] = clean_results(result)
