@@ -1,3 +1,4 @@
+import os
 """
 This function helps build the help/? in the application. All menus should use the below
 to maintain a consistent help output.
@@ -44,6 +45,26 @@ def common_help(instance, arg, run_case=False):
                 description = instance.cmd_manager.commands[command_name].get('description', 'No description available')
                 print(f"    {command_name.ljust(25)} {description.lower()}")
         print()
+
+def check_and_create_directory(self, directory):
+    """
+    Check if a directory exists, and create it if it does not.
+
+    Args:
+        directory (str): The path of the directory to check/create.
+    """
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+def check_and_create_file(self, file):
+    """
+    Check if a file exists, and create it if it does not.
+
+    Args:
+        file (str): The path of the file to check/create.
+    """
+    if not os.path.exists(file):
+        open(file, 'a').close()
 
 """
 This function helps clean the results of output of whitespace. This should be considered

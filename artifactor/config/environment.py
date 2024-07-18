@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv, dotenv_values
+from utils.helpers import check_and_create_file
 
 class EnvManager:
     def __init__(self, env_file='.env'):
@@ -22,17 +23,10 @@ class EnvManager:
             'PING_TIMEOUT': None
         }
         self.load_environment()
-        self.check_and_create_env_file()
+        check_and_create_file(self.env_file)
 
     def load_environment(self):
         self.env_vars = dotenv_values(self.env_file)
-
-    def check_and_create_env_file(self):
-        """
-        Creates empty file if none detected
-        """
-        if not os.path.exists(self.env_file):
-            open(self.env_file, 'a').close()
 
     def get_env_var(self, var_name):
         return self.env_vars[var_name]
