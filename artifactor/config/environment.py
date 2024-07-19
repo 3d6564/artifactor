@@ -22,8 +22,8 @@ class EnvManager:
             'PING_COUNT': None,
             'PING_TIMEOUT': None
         }
-        self.load_environment()
         check_and_create_file(self.env_file)
+        self.load_environment()
 
     def load_environment(self):
         self.env_vars = dotenv_values(self.env_file)
@@ -37,40 +37,32 @@ class EnvManager:
         with open(self.env_file, "w") as f:
             for key, value in env_vars.items():
                 f.write(f"{key}={value}\n")
-        self.load_environment()  # Reload the .env file to get change
+        self.load_environment()
 
     def get_or_prompt_env_var(self, var_name, prompt_text):
         value = self.get_env_var(var_name)
-        if value is None:
+        if value in [None, 'None']:
             value = input(prompt_text)
             self.set_env_var(var_name, value)
         return value
 
-    def set_jumpbox_use(self):
-        jumpbox_use = input("Do you want to use a jumpbox? (Y/N): ").strip().upper()
-        while jumpbox_use.upper() not in ["Y", "N"]:
-            jumpbox_use = input("Invalid input. Do you want to use a jumpbox? (Y/N): ").strip()
-        self.set_env_var('USE_JUMPBOX', jumpbox_use)
-        load_dotenv(override=True)
-        print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")
-
     def initialize_env(self):
-        env_vars = dotenv_values(self.env_file)
+        self.load_environment()
         required_var_set = False
 
         for key in self.env_vars:
-            if key in env_vars:
-                self.env_vars[key] = env_vars[key]
-                if key == 'USE_JUMPBOX' and env_vars[key] in ['Y', 'N']:
-                    required_var_set = True
-            else:
+            value = self.get_env_var(key)
+            if value is None:
                 print(f"\033[1;31mWarning: {key} is not set in the environment file.\033[0m")
+            else:
+                if key == 'USE_JUMPBOX':
+                    while not required_var_set:
+                        value = self.get_or_prompt_env_var('USE_JUMPBOX', "Do you want to use a jumpbox? (Y/N): ").strip().upper()        
+                        if value in ['Y', 'N']:
+                            required_var_set = True
+                            print(f"\n\033[1;32mJumpbox usage set to: {self.env_vars['USE_JUMPBOX']}\033[0m")
+                        else:
+                            self.set_env_var('USE_JUMPBOX', None)
+                self.env_vars[key] = value
 
-        if not required_var_set:
-            jumpbox_use = self.get_or_prompt_env_var('USE_JUMPBOX', "Do you want to use a jumpbox? (Y/N): ").strip().upper()
-            while jumpbox_use not in ["Y", "N"]:
-                jumpbox_use = input("Invalid input. Do you want to use a jumpbox? (Y/N): ").strip().upper()
-            self.set_env_var('USE_JUMPBOX', jumpbox_use)
-            print(f"\n\033[1;32mJumpbox usage set to: {jumpbox_use}\033[0m")
-        else:
-            print("\033[1;32menvironment variables have been initialized.\033[0m")
+        print("\033[1;32menvironment variables have been initialized.\033[0m")

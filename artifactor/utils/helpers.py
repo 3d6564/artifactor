@@ -46,7 +46,7 @@ def common_help(instance, arg, run_case=False):
                 print(f"    {command_name.ljust(25)} {description.lower()}")
         print()
 
-def check_and_create_directory(self, directory):
+def check_and_create_directory(directory):
     """
     Check if a directory exists, and create it if it does not.
 
@@ -56,7 +56,7 @@ def check_and_create_directory(self, directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def check_and_create_file(self, file):
+def check_and_create_file(file):
     """
     Check if a file exists, and create it if it does not.
 
