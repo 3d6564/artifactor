@@ -1,4 +1,3 @@
-import os
 import shutil
 
 class HostManager:
