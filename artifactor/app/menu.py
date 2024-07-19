@@ -81,6 +81,7 @@ class MainCmd(Cmd):
 
 @class_logger(logger_instance)
 class ConfigureCmd(Cmd):
+     'Configure additional settings in application: <sub-command>'
      prompt = 'artc-configure> '
 
      def __init__(self, env_manager, cmd_manager, host_manager, arg):
@@ -127,6 +128,7 @@ class ConfigureCmd(Cmd):
 
 @class_logger(logger_instance)
 class HostsCmd(Cmd):
+     'Configure host settings in application: <sub-command>'
      prompt = 'artc-configure-hosts> '
 
      def __init__(self, host_manager, arg):
@@ -157,6 +159,7 @@ class HostsCmd(Cmd):
 
 @class_logger(logger_instance)
 class CommandsCmd(Cmd):
+     'Configure run commands in application: <sub-command>'
      prompt = 'artc-configure-commands> '
 
      def __init__(self, cmd_manager, arg):
@@ -259,6 +262,7 @@ class CommandsCmd(Cmd):
 
 @class_logger(logger_instance)
 class EnvironmentCmd(Cmd):
+     'Configure environment settings in application: <sub-command>'
      prompt = 'artc-configure-environment> '
 
      def __init__(self, env_manager, arg):
@@ -296,6 +300,7 @@ class EnvironmentCmd(Cmd):
 
 @class_logger(logger_instance)
 class RunCmd(Cmd):
+     'Run commands in application: <sub-command>'
      prompt = 'artc-run> '
 
      def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):

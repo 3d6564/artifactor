@@ -117,15 +117,16 @@ class CommandExecutor:
         host_dict = self._get_initial_host_os(env_manager, hosts)
         known_dict, unknown_dict = self._get_host_command(host_dict, command_name='get_os')
         output = self.execute_commands(env_manager, known_dict)
-        
+
         for key, value in output.items():
             os_type = host_dict[key].get('os_type')
             if os_type == 'windows':
-                id_line = next(line for line in value.splitlines() if line.startswith('OS Name:'))
-                if 'Microsoft Windows' in id_line:
-                    host_dict[key]['os_type'] = 'win-winrm'
-                else:
-                    host_dict[key]['os_type'] = id_line.split(':', 1)[1].strip()
+                if 'OS Name:' in value:
+                    id_line = next(line for line in value.splitlines() if line.startswith('OS Name:'))
+                    if 'Microsoft Windows' in id_line:
+                        host_dict[key]['os_type'] = 'win-winrm'
+                    else:
+                        host_dict[key]['os_type'] = id_line.split(':', 1)[1].strip()
             elif os_type == 'linux':
                 if 'ID=' in value:
                     id_line = next(line for line in value.splitlines() if line.startswith('ID='))

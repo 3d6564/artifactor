@@ -102,7 +102,7 @@ class SSHClient:
                                                              command)
                 tunnel.stop()
             else:
-                print(f"Using direction connection to connect to {host}...")
+                print(f"Using SSH to connect to {host}...")
                 if os_type in ('windows', 'win-winrm'):
                     print('Creating WinRM session...')
                     winrm_session = self.create_winrm_session(host,
@@ -122,7 +122,8 @@ class SSHClient:
                                                              command)
                 if error:
                     print(f'Error: {error}')
+                    output = error
             return host, output
         except Exception as e:
             print(f"Error: {e}")
-            return str(e)
+            return host, str(e)

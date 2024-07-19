@@ -1,5 +1,6 @@
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from functools import wraps
 from .helpers import check_and_create_directory
@@ -63,19 +64,24 @@ class Logger:
         Returns:
             str: The generated log file path.
         """
-        timestamp = self.format_datetime(datetime.now())
-        log_file_path = f'logs/activity/{timestamp}.log'
+        log_file_path = f'logs/activity.log'
 
         check_and_create_directory(os.path.dirname(log_file_path))
 
         # Configure the logger
-        logging.basicConfig(
-            filename=log_file_path,
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            force=True
+        handler = RotatingFileHandler(
+            log_file_path,
+            maxBytes=10*1024*1024,  # 10 MB
+            backupCount=5  # Keep up to 5 backup files
         )
+
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+        # Configure the logger
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        self.logger.addHandler(handler)
 
         print(f'Logging to {log_file_path}')
         return log_file_path
