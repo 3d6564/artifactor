@@ -37,7 +37,7 @@ class EnvManager:
         with open(self.env_file, "w") as f:
             for key, value in env_vars.items():
                 f.write(f"{key}={value}\n")
-        self.load_environment()  # Reload the .env file to update the environment variables with override
+        self.load_environment()  # Reload the .env file to get change
 
     def get_or_prompt_env_var(self, var_name, prompt_text):
         value = self.get_env_var(var_name)
@@ -61,7 +61,6 @@ class EnvManager:
         for key in self.env_vars:
             if key in env_vars:
                 self.env_vars[key] = env_vars[key]
-                os.environ[key] = env_vars[key]
                 if key == 'USE_JUMPBOX' and env_vars[key] in ['Y', 'N']:
                     required_var_set = True
             else:

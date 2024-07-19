@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import wraps
 from .helpers import check_and_create_directory
 
+
 class Logger:
     """
     Logger class to handle logging for all actions and events.
@@ -41,12 +42,27 @@ class Logger:
         return wrapper
 
     def generate_host_cmd_log(self, host, command_name):
-        # Replace periods with dashes for IP addresses
+        """
+        Generate log file path for a specific host and command.
+
+        Args:
+            host (str): The host name or IP address.
+            command_name (str): The name of the command.
+
+        Returns:
+            str: The generated log file path.
+        """
         safe_host = host.replace('.', '-')
         timestamp = self.format_datetime(datetime.now())
         return f'logs/hosts/{safe_host}/{command_name}_{timestamp}.log'
     
     def generate_activity_log(self):
+        """
+        Generate log file for a activities and configure logger.
+
+        Returns:
+            str: The generated log file path.
+        """
         timestamp = self.format_datetime(datetime.now())
         log_file_path = f'logs/activity/{timestamp}.log'
 
@@ -54,9 +70,9 @@ class Logger:
 
         # Configure the logger
         logging.basicConfig(
-            filename=log_file_path,  # Log file path
-            level=logging.INFO,  # Log level
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Log format
+            filename=log_file_path,
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             force=True
         )
         self.logger = logging.getLogger(__name__)
@@ -65,17 +81,41 @@ class Logger:
         return log_file_path
 
     def write_output(self, file_path, text):
+        """
+        Write text to the specified file.
+
+        Args:
+            file_path (str): The path of the file to write to.
+            text (str): The text to write to the file.
+        """
         check_and_create_directory(os.path.dirname(file_path))
         with open(file_path, 'w', newline='') as f:
             f.write(text)
 
     def format_datetime(self, timestamp):
+        """
+        Format all datetime objects to a set format. This provides consistency in
+        the application. All datetime transformations should use this.
+
+        Args:
+            timestamp (datetime): The datetime object to format.
+
+        Returns:
+            str: The formatted datetime string.
+        """
         return timestamp.strftime('%Y-%m-%d_%H-%M-%S')
-    
-'''
-Class Logger
-'''
+
+
 def class_logger(logger_instance):
+    """
+    Class decorator to log all methods of a class using the provided logger instance.
+
+    Args:
+        logger_instance (Logger): The Logger instance to use for logging.
+
+    Returns:
+        function: The class decorator.
+    """
     def class_decorator(cls):
         for attr_name, attr_value in cls.__dict__.items():
             if callable(attr_value) and not attr_name.startswith('__'):
