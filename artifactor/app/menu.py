@@ -124,7 +124,7 @@ class ConfigureCmd(Cmd):
           raise ExitApplication
 
      def do_help(self, arg):
-        common_help(self, arg)
+          common_help(self, arg)
 
 @class_logger(logger_instance)
 class HostsCmd(Cmd):
@@ -272,13 +272,20 @@ class EnvironmentCmd(Cmd):
 
      def do_set(self, arg):
           'Modify environment variables: set <variable name> <value>'
-          var, value = arg.split(' ', 1)
-          if value.isdigit():
-               print(f'old value: {self.env_manager.get_env_var(var)}')
-               self.env_manager.set_env_var(var, value)
-               print(f'new value: {self.env_manager.get_env_var(var)}')
-          else:
-            print("Invalid input. Please enter a number.")
+          var_digits = ['PING_COUNT','PING_TIMEOUT']
+          if arg.strip() == '?':
+               return self.do_show('?')
+          else:     
+               var, value = arg.split(' ', 1)
+               if var in var_digits:
+                    if value.isdigit():
+                         print(f'old value: {self.env_manager.get_env_var(var)}')
+                         self.env_manager.set_env_var(var, value)
+                         print(f'new value: {self.env_manager.get_env_var(var)}')
+                    else:
+                         print("Invalid input. Please enter a number.")
+               else:
+                    self.env_manager.set_env_var(var, value)
 
      def do_show(self, arg):
           'Show existing environment configuration: show'

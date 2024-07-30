@@ -83,7 +83,6 @@ class Logger:
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(handler)
 
-        print(f'Logging to {log_file_path}')
         return log_file_path
 
     def write_output(self, file_path, text):

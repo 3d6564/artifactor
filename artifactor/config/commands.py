@@ -74,14 +74,17 @@ class CommandExecutor:
         for host, values in host_dict.items():
             try:
                 values["command"] = self.commands.get(command_name).get(values["os_type"]).get("cmd")
-                known_dict[host] = values
+                values["sudo"] = self.commands.get(command_name).get(values["os_type"]).get("sudo")
+                if values["command"] is None:
+                    print(f"\033[1;31m{command_name} not found for {values['os_type']} on host {host}.. \n" +
+                    "Please add it to your commands file.\033[0m")
+                    unknown_dict[host] = values
+                else:
+                    known_dict[host] = values
             except:
                 values["command"] = 'unknown'
                 unknown_dict[host] = values
-            values["command_name"] = command_name
-            if values["command"] is None:
-                print(f"\033[1;31m{command_name} not found for {values['os_type']} on host {host}.. \n" +
-                    "Please add it to your commands file.\033[0m")
+            values["command_name"] = command_name                
 
         return known_dict, unknown_dict
 
