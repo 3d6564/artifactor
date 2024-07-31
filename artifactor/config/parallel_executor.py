@@ -17,9 +17,10 @@ class ParallelExecutor:
             future_to_host = {
                 executor.submit(command_func,
                                 env_manager,
-                                values["command"], 
+                                values["command"],
                                 values["os_type"],
-                                host): (host, values["command_name"]) for host, values in host_list.items()
+                                host,
+                                values["sudo"]): (host, values["command_name"]) for host, values in host_list.items()
             }
             for future in as_completed(future_to_host):
                 host, command_name = future_to_host[future]

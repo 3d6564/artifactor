@@ -20,11 +20,6 @@ class SSHClient:
         # The below should be logged but doesn't need output to user
         #print(f"Local bind ports: {tunnel.local_bind_ports}")
         return tunnel
-    
-    def is_port_open(self, host, port):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            sock.settimeout(1)
-            return sock.connect_ex((host, port)) == 0
 
     def create_winrm_session(self, host, port, username, password):
         local_port = port  # Assuming the first local bind port is for WinRM
@@ -35,15 +30,45 @@ class SSHClient:
         )
         return winrm_session
     
-    def execute_ssh_command(self, ssh_host, ssh_port, ssh_username, ssh_key_path, command):
+    def execute_ssh_command(self, command, ssh_host, ssh_port, ssh_username, 
+                            ssh_key_path=None, password=None, sudo=False):
+        """
+        Execute a command on a remote host via SSH.
+
+        Args:
+            command (str): The command to execute on the remote host.
+            ssh_host (str): The hostname or IP address of the remote host.
+            ssh_port (int): The port to use for the SSH connection.
+            ssh_username (str): The username to use for the SSH connection.
+            ssh_key_path (str, optional): The path to the SSH key file. Defaults to None.
+            password (str, optional): The password to use for the SSH connection. Defaults to None.
+            sudo (bool, optional): If the command requires sudo or not. Defaults to False.
+            
+        Returns:
+            tuple: A tuple containing the command output and error (output, error).
+        """
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(
-            hostname=ssh_host,
-            port=ssh_port,
-            username=ssh_username,
-            key_filename=ssh_key_path
-        )
+        if ssh_key_path:
+            ssh_client.connect(
+                hostname=ssh_host,
+                port=ssh_port,
+                username=ssh_username,
+                key_filename=ssh_key_path
+            )
+        else:
+            ssh_client.connect(
+                hostname=ssh_host,
+                port=ssh_port,
+                username=ssh_username,
+                password=password
+            )
+
+        if sudo and password:
+            command = f'echo {password} | sudo -S {command}'
+
+        if sudo and not password:
+            command = f'sudo -S {command}'
 
         stdin, stdout, stderr = ssh_client.exec_command(command)
         output = stdout.read().decode() if stdout else None
@@ -52,7 +77,10 @@ class SSHClient:
         ssh_client.close()
         return output, error
 
-    def run_command_on_host(self, env_manager, command, os_type, host, jumpbox=None, jumpbox_username=None, target_username=None, jumpbox_password=None, jumpbox_key_path=None, target_password=None, target_key_path=None):
+    def run_command_on_host(self, env_manager, command, os_type, host, sudo=False,
+                            jumpbox=None, jumpbox_username=None, target_username=None, 
+                            jumpbox_password=None, jumpbox_key_path=None, 
+                            target_password=None, target_key_path=None):
         output = None
         use_jumpbox = env_manager.env_vars['USE_JUMPBOX'].lower() in ['y']
         
@@ -64,8 +92,10 @@ class SSHClient:
 
         if use_target_password:
             target_password = env_manager.env_vars['TARGET_PASSWORD']
+            target_key_path = None
         else:
             target_key_path = env_manager.env_vars['TARGET_KEY']
+            target_password = None
 
         try:
             if use_jumpbox:
@@ -89,17 +119,18 @@ class SSHClient:
                                                               tunnel.local_bind_ports[0],
                                                               win_username,
                                                               win_password)
-                    print('WinRM session established...')
                     result = winrm_session.run_cmd(command)
                     output = result.std_out.decode('utf-8') if result.std_out else None
                     error = result.std_err.decode('utf-8') if result.std_err else None
                 else:
                     print(f'Creating SSH session for {host}...')
-                    output, error = self.execute_ssh_command('localhost',
+                    output, error = self.execute_ssh_command(command,
+                                                             'localhost',
                                                              tunnel.local_bind_ports[0],
                                                              target_username,
                                                              target_key_path,
-                                                             command)
+                                                             target_password,
+                                                             sudo)
                 tunnel.stop()
             else:
                 print(f"Using SSH to connect to {host}...")
@@ -115,15 +146,17 @@ class SSHClient:
                     error = result.std_err.decode('utf-8') if result.std_err else None
                 else:
                     print('Creating SSH session...')
-                    output, error = self.execute_ssh_command(host,
+                    output, error = self.execute_ssh_command(command,
+                                                             host,
                                                              22,
                                                              target_username,
                                                              target_key_path,
-                                                             command)
+                                                             target_password,
+                                                             sudo)
                 if error:
-                    print(f'Error: {error}')
+                    print(f'\033[1;31mHost {host} error: {error}\033[0m')
                     output = error
             return host, output
         except Exception as e:
-            print(f"Error: {e}")
-            return host, str(e)
+            print(f"\033[1;31mHost {host} error: {e}\033[0m")
+            return host, "Error: " + str(e)

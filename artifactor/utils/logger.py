@@ -1,5 +1,6 @@
 import os
 import logging
+import inspect
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from functools import wraps
@@ -36,9 +37,17 @@ class Logger:
         """
         @wraps(func)
         def wrapper(*args, **kwargs):
-            self.logger.info(f'Executing {func.__name__} with args: {args}')
+            frame = inspect.currentframe().f_back
+            module = inspect.getmodule(frame).__name__
+            class_name = args[0].__class__.__name__ if args else ''
+            
+            # Format the log message
+            arg_str = args[-1] if args else ''
+            self.logger.info(f'Executing {func.__name__} from {module}.{class_name} with arg: {arg_str}')
+
+            #self.logger.info(f'Executing {func.__name__} with args: {args}')
             result = func(*args, **kwargs)
-            self.logger.info(f'Finished {func.__name__} with result: {result}')
+            #self.logger.info(f'Finished {func.__name__} with result: {result}')
             return result
         return wrapper
 
@@ -69,21 +78,23 @@ class Logger:
         check_and_create_directory(os.path.dirname(log_file_path))
 
         # Configure the logger
-        handler = RotatingFileHandler(
-            log_file_path,
-            maxBytes=10*1024*1024,  # 10 MB
-            backupCount=5  # Keep up to 5 backup files
-        )
+        if not self.logger:
+            self.logger = logging.getLogger(__name__)
+            if not self.logger.hasHandlers():
+                handler = RotatingFileHandler(
+                    log_file_path,
+                    maxBytes=10*1024*1024,  # 10 MB
+                    backupCount=5  # Keep up to 5 backup files
+                )
 
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+                handler.setLevel(logging.INFO)
+                handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
-        # Configure the logger
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(handler)
+                # Configure the logger
+                self.logger = logging.getLogger(__name__)
+                self.logger.setLevel(logging.INFO)
+                self.logger.addHandler(handler)
 
-        print(f'Logging to {log_file_path}')
         return log_file_path
 
     def write_output(self, file_path, text):
