@@ -76,13 +76,13 @@ class CommandExecutor:
                 values["command"] = self.commands.get(command_name).get(values["os_type"]).get("cmd")
                 values["sudo"] = self.commands.get(command_name).get(values["os_type"]).get("sudo")
                 if values["command"] is None:
-                    print(f"\033[1;31m{command_name} not found for {values['os_type']} on host {host}.. \n" +
-                    "Please add it to your commands file.\033[0m")
+                    print(f"\033[1;31m{command_name} was null for {values['os_type']} host {host}.\033[0m")
                     unknown_dict[host] = values
                 else:
                     known_dict[host] = values
             except:
                 values["command"] = 'unknown'
+                print(f"\033[1;31m{command_name} not found for {values['os_type']} host {host}.\033[0m")
                 unknown_dict[host] = values
             values["command_name"] = command_name                
 
@@ -136,18 +136,13 @@ class CommandExecutor:
                     host_dict[key]['os_type'] = id_line.split('=')[1].strip('"')
             else:
                 print(f"Unknown OS detected for {key}.")
-                host_dict[key]['os_type'] = 'unknown'
+                del host_dict[key]
         return host_dict
 
     def run_command(self, env_manager, command_name, hosts):
         host_dict = self.detect_os(env_manager, hosts)
 
         known_dict, unknown_dict = self._get_host_command(host_dict, command_name)
-
-        for host, values in unknown_dict.items():
-            if 'unknown' in values:
-                print(f"Could not determine the OS of {host}. Skipping...")
-                continue
 
         results = self.execute_commands(env_manager, known_dict)
         return results
