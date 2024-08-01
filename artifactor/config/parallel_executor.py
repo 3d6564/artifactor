@@ -29,11 +29,16 @@ class ParallelExecutor:
                     host, result = future.result()
                     results[host] = clean_results(result)
                     self.logger.write_output(log_name, result)
-                    print(f"\033[1;32mHost {host} results written to {log_name}\033[0m")
+
+                    if result.startswith('error'):
+                        print(f"\033[1;31mHost {host} {result}\033[0m")
+                        print(f"\033[1;31mHost {host} error written to {log_name}\033[0m")
+                    else:
+                        print(f"\033[1;32mHost {host} results written to {log_name}\033[0m")
                 except Exception as e:
                     results[host] = str(e)
                     self.logger.write_output(log_name, f"Error for {host}:\n{e}")
-                    print(f"\033[1;33mHost {host} error written to {log_name}\033[0m")
+                    print(f"\033[1;DmHost {host} error written to {log_name}\033[0m")
         return results
     
     def shutdown_executor(self):

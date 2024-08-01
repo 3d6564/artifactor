@@ -76,13 +76,13 @@ class CommandExecutor:
                 values["command"] = self.commands.get(command_name).get(values["os_type"]).get("cmd")
                 values["sudo"] = self.commands.get(command_name).get(values["os_type"]).get("sudo")
                 if values["command"] is None:
-                    print(f"\033[1;31m{command_name} was null for {values['os_type']} host {host}.\033[0m")
+                    print(f"\033[1;33m{command_name} was found but null for {values['os_type']} host {host}.\033[0m")
                     unknown_dict[host] = values
                 else:
                     known_dict[host] = values
             except:
                 values["command"] = 'unknown'
-                print(f"\033[1;31m{command_name} not found for {values['os_type']} host {host}.\033[0m")
+                print(f"\033[1;33m{command_name} not found for {values['os_type']} host {host}.\033[0m")
                 unknown_dict[host] = values
             values["command_name"] = command_name                
 
@@ -122,21 +122,24 @@ class CommandExecutor:
         output = self.execute_commands(env_manager, known_dict)
 
         for key, value in output.items():
-            os_type = host_dict[key].get('os_type')
-            if os_type == 'windows':
-                if 'OS Name:' in value:
-                    id_line = next(line for line in value.splitlines() if line.startswith('OS Name:'))
-                    if 'Microsoft Windows' in id_line:
-                        host_dict[key]['os_type'] = 'win-winrm'
-                    else:
-                        host_dict[key]['os_type'] = id_line.split(':', 1)[1].strip()
-            elif os_type == 'linux':
-                if 'ID=' in value:
-                    id_line = next(line for line in value.splitlines() if line.startswith('ID='))
-                    host_dict[key]['os_type'] = id_line.split('=')[1].strip('"')
-            else:
-                print(f"Unknown OS detected for {key}.")
+            if value.startswith('error:'):
                 del host_dict[key]
+            else:
+                os_type = host_dict[key].get('os_type')
+                if os_type == 'windows':
+                    if 'OS Name:' in value:
+                        id_line = next(line for line in value.splitlines() if line.startswith('OS Name:'))
+                        if 'Microsoft Windows' in id_line:
+                            host_dict[key]['os_type'] = 'win-winrm'
+                        else:
+                            host_dict[key]['os_type'] = id_line.split(':', 1)[1].strip()
+                elif os_type == 'linux':
+                    if 'ID=' in value:
+                        id_line = next(line for line in value.splitlines() if line.startswith('ID='))
+                        host_dict[key]['os_type'] = id_line.split('=')[1].strip('"')
+                else:
+                    print(f"Unknown OS detected for {key}.")
+                    del host_dict[key]
         return host_dict
 
     def run_command(self, env_manager, command_name, hosts):
