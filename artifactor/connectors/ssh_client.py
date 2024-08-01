@@ -154,9 +154,9 @@ class SSHClient:
                                                              target_password,
                                                              sudo)
                 if error:
-                    print(f'\033[1;31mHost {host} error: {error}\033[0m')
+                    #print(f'\033[1;31mHost {host} error: {error}\033[0m')
                     output = error
             return host, output
         except Exception as e:
-            print(f"\033[1;31mHost {host} error: {e}\033[0m")
-            return host, "Error: " + str(e)
+            #print(f"\033[1;31mHost {host} error: {e}\033[0m")
+            return host, "error: " + str(e)
