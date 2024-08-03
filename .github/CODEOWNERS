@@ -1,0 +1,15 @@
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Each line is a file pattern followed by one or more owners.
+
+# These owners will be the default owners for everything in the repo. 
+# Unless a later match takes precedence, @3d6564 will be requested 
+# for review when someone opens a pull request.
+* @3d6564
+
+# Any change inside the `/.github` directory
+# will require approval from @3d6564 
+/.github/ @3d6564
+
+# Any change inside the `/artifactor` directory
+# will require approval from @3d6564 
+/artifactor/ @3d6564
