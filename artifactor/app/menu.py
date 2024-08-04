@@ -1,21 +1,30 @@
 import types
 from cmd import Cmd
 from utils import ExitApplication, Logger, class_logger, common_help
-
+import cmd2
 
 logger_instance = Logger()
      
 @class_logger(logger_instance)
-class MainCmd(Cmd):
+class MainCmd(cmd2.Cmd):
      prompt = 'artc> '
      intro = '\ntype ? or help to list options'
 
+     
      def __init__(self, env_manager, host_manager, cmd_manager, cmd_executor):
           super().__init__()
           self.env_manager = env_manager
           self.host_manager = host_manager
           self.cmd_manager = cmd_manager
           self.cmd_executor = cmd_executor
+
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
+          del cmd2.Cmd.do_edit
+          del cmd2.Cmd.do_run_pyscript
+          del cmd2.Cmd.do_run_script
+          del cmd2.Cmd.do_set
+          del cmd2.Cmd.do_shell
+          del cmd2.Cmd.do_shortcuts
 
      def do_show(self, arg):
           'Show existing environment configuration: show'
@@ -47,12 +56,15 @@ class MainCmd(Cmd):
                          self.host_manager,
                          arg)
           if arg and self.host_manager.hosts:
-               run_cmd.onecmd(arg)
+               exit_status = run_cmd.onecmd(arg)
           elif self.host_manager.hosts:
-               run_cmd.cmdloop()
+               exit_status = run_cmd.cmdloop()
           else:
                print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
-               return
+
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
 
      def do_configure(self, arg):
           'Configure additional settings in application: configure [<sub-command>]'
@@ -61,9 +73,12 @@ class MainCmd(Cmd):
                                         self.host_manager,
                                         arg)
           if arg:
-               configure_cmd.onecmd(arg)
+               exit_status = configure_cmd.onecmd(arg)
           else:
-               configure_cmd.cmdloop()
+               exit_status = configure_cmd.cmdloop()
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
 
      def do_ping(self, arg):
           'Run ping scan: ping [<host>]'
@@ -72,15 +87,16 @@ class MainCmd(Cmd):
           for host in hosts:
                print(f"{host}: {self.cmd_executor.ping_ttl(self.env_manager, host)}")
 
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return True
 
-     def do_help(self, arg):
-          common_help(self, arg)
+    # def do_help(self, arg):
+    #      common_help(self, arg)
 
 @class_logger(logger_instance)
-class ConfigureCmd(Cmd):
+class ConfigureCmd(cmd2.Cmd):
      'Configure additional settings in application: <sub-command>'
      prompt = 'artc-configure> '
 
@@ -91,43 +107,59 @@ class ConfigureCmd(Cmd):
           self.cmd_manager = cmd_manager
           self.host_manager = host_manager
 
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
+
      def do_hosts(self, arg):
           'Hosts submenu: hosts [<arg>]'
           hosts_cmd = HostsCmd(self.host_manager, arg)
           if arg:
-               hosts_cmd.onecmd(arg)
+               exit_status = hosts_cmd.onecmd(arg)
           else:
-               hosts_cmd.cmdloop()
+               exit_status = hosts_cmd.cmdloop()
+          
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
 
      def do_commands(self, arg):
           'Commands submenu: commands [<arg>]'
           commands_cmd = CommandsCmd(self.cmd_manager, arg)
           if arg:
-               commands_cmd.onecmd(arg)
+               exit_status = commands_cmd.onecmd(arg)
           else:
-               commands_cmd.cmdloop()
+               exit_status = commands_cmd.cmdloop()
+
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
 
      def do_environment(self, arg):
           'Environment submenu: environment [<arg>]'
           env_cmd = EnvironmentCmd(self.env_manager, arg)
           if arg:
-               env_cmd.onecmd(arg)
+               exit_status = env_cmd.onecmd(arg)
           else:
-               env_cmd.cmdloop()
+               exit_status = env_cmd.cmdloop()
+
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
      
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.exit_code = 1
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return self.exit_code
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     #def do_help(self, arg):
+     #     common_help(self, arg)
 
 @class_logger(logger_instance)
-class HostsCmd(Cmd):
+class HostsCmd(cmd2.Cmd):
      'Configure host settings in application: <sub-command>'
      prompt = 'artc-configure-hosts> '
 
@@ -135,6 +167,8 @@ class HostsCmd(Cmd):
           super().__init__()
           self.arg = arg
           self.host_manager = host_manager
+
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
 
      def do_add(self, arg):
           'Add a host and save to host file: add <hostname_or_ip>'
@@ -148,17 +182,19 @@ class HostsCmd(Cmd):
      
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.exit_code = 1
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return self.exit_code
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     #def do_help(self, arg):
+     #     common_help(self, arg)
 
 @class_logger(logger_instance)
-class CommandsCmd(Cmd):
+class CommandsCmd(cmd2.Cmd):
      'Configure run commands in application: <sub-command>'
      prompt = 'artc-configure-commands> '
 
@@ -166,6 +202,8 @@ class CommandsCmd(Cmd):
           super().__init__()
           self.arg = arg
           self.cmd_manager = cmd_manager
+
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
 
      def do_add(self, arg):
           'Add or update a command with a series of menus: add'
@@ -251,17 +289,19 @@ class CommandsCmd(Cmd):
 
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.exit_code = 1
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return self.exit_code
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     #def do_help(self, arg):
+     #     common_help(self, arg)
 
 @class_logger(logger_instance)
-class EnvironmentCmd(Cmd):
+class EnvironmentCmd(cmd2.Cmd):
      'Configure environment settings in application: <sub-command>'
      prompt = 'artc-configure-environment> '
 
@@ -269,6 +309,8 @@ class EnvironmentCmd(Cmd):
           super().__init__()
           self.arg = arg
           self.env_manager = env_manager
+
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
 
      def do_set(self, arg):
           'Modify environment variables: set <variable name> <value>'
@@ -296,17 +338,19 @@ class EnvironmentCmd(Cmd):
      
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.exit_code = 1
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return self.exit_code
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     #def do_help(self, arg):
+     #     common_help(self, arg)
 
 @class_logger(logger_instance)
-class RunCmd(Cmd):
+class RunCmd(cmd2.Cmd):
      'Run commands in application: <sub-command>'
      prompt = 'artc-run> '
 
@@ -321,6 +365,8 @@ class RunCmd(Cmd):
           self.selected_command = None
           self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
+
+          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
 
      def _create_dynamic_commands(self):
           'This generates a dynamic list of commands to run: none'
@@ -355,11 +401,13 @@ class RunCmd(Cmd):
 
      def do_back(self, arg):
           'Return to the main menu: back'
+          self.exit_code = 1
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_quit(self, arg):
+          'Exit the application: quit'
+          self.exit_code = 2
+          return self.exit_code
 
-     def do_help(self, arg):
-        common_help(self, arg, run_case=True)
+     #def do_help(self, arg):
+     #   common_help(self, arg, run_case=True)
