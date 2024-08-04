@@ -10,6 +10,15 @@ class MainCmd(cmd2.Cmd):
      prompt = 'artc> '
      intro = '\ntype ? or help to list options'
 
+     load_parser = cmd2.Cmd2ArgumentParser()
+     load_subparser = load_parser.add_subparsers(title='subcommands', help='subcommand help')
+
+     parser_load_hosts = load_subparser.add_parser('hosts', help='hosts help')
+     parser_load_hosts.add_argument('-f', type=str, default='host_file', help='hosts')
+
+     parser_load_cmds = load_subparser.add_parser('commands', help='commands help')
+     parser_load_cmds.add_argument('-f', type=str, default='cmd_file', help='commands')
+     
      
      def __init__(self, env_manager, host_manager, cmd_manager, cmd_executor):
           super().__init__()
@@ -32,21 +41,32 @@ class MainCmd(cmd2.Cmd):
           for var in self.env_manager.env_vars:
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print()
+     
+     def load_hosts(self, args):
+          """hosts subcommand for load command"""
+          self.host_manager.hosts_file = args.f
+          self.host_manager.hosts = self.host_manager.load_hosts()
+          print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
 
-     def do_load(self, arg):
+     def load_commands(self, args):
+          """commands subcommand for load command"""
+          self.cmd_manager.commands_file = args.f
+          self.cmd_manager.commands = self.cmd_manager.load_commands()
+          print(f"Commands loaded from {self.cmd_manager.commands_file}")
+
+     parser_load_hosts.set_defaults(func=load_hosts)
+     parser_load_cmds.set_defaults(func=load_commands)
+
+     @cmd2.with_argparser(load_parser)
+     def do_load(self, args):
           'Load hosts or commands from the default or a custom file: load (hosts | commands) [<path/to/file>]'
-          type = arg.strip() if arg else ''
-          options = arg.split(' ', 1)
-          if type.startswith('hosts'):
-               self.host_manager.hosts_file = arg.split(' ', 1)[1].strip() if len(options) > 1 else self.host_manager.hosts_file
-               self.host_manager.hosts = self.host_manager.load_hosts()
-               print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
-          elif type.startswith('commands'):
-               self.cmd_manager.commands_file = arg.split(' ', 1)[1].strip() if len(options) > 1 else self.cmd_manager.commands_file
-               self.cmd_manager.commands = self.cmd_manager.load_commands()
-               print(f"Commands loaded from {self.cmd_manager.commands_file}")
+          func = getattr(args, 'func', None)
+          if func is not None:
+               # Call whatever subcommand function was selected
+               func(self, args)
           else:
-               print("Invalid option. Nothing loaded.")
+               # No subcommand was provided, so call help
+               self.do_help('load')
 
      def do_run(self, arg):
           'Run a command on hosts loaded to application: run [<command_name>]'     
@@ -71,14 +91,20 @@ class MainCmd(cmd2.Cmd):
           configure_cmd = ConfigureCmd(self.env_manager, 
                                         self.cmd_manager,
                                         self.host_manager,
-                                        arg)
+                                        arg.args)
+
+          #configure_cmd.cmdloop()
+          print('here')
           if arg:
-               exit_status = configure_cmd.onecmd(arg)
+               configure_cmd.onecmd(arg.args)
           else:
-               exit_status = configure_cmd.cmdloop()
-          if exit_status == 2:
-               self.exit_code = 2
-               return True
+               configure_cmd.cmdloop()
+          print('here2')
+          #print(exit_status)
+
+          #if exit_status == 2:
+          #     self.exit_code = 2
+          #     return True
 
      def do_ping(self, arg):
           'Run ping scan: ping [<host>]'
@@ -92,8 +118,6 @@ class MainCmd(cmd2.Cmd):
           self.exit_code = 2
           return True
 
-    # def do_help(self, arg):
-    #      common_help(self, arg)
 
 @class_logger(logger_instance)
 class ConfigureCmd(cmd2.Cmd):
@@ -111,9 +135,10 @@ class ConfigureCmd(cmd2.Cmd):
 
      def do_hosts(self, arg):
           'Hosts submenu: hosts [<arg>]'
-          hosts_cmd = HostsCmd(self.host_manager, arg)
+          hosts_cmd = HostsCmd(self.host_manager,
+                               arg.args)
           if arg:
-               exit_status = hosts_cmd.onecmd(arg)
+               exit_status = hosts_cmd.onecmd(arg.args)
           else:
                exit_status = hosts_cmd.cmdloop()
           
@@ -123,9 +148,10 @@ class ConfigureCmd(cmd2.Cmd):
 
      def do_commands(self, arg):
           'Commands submenu: commands [<arg>]'
-          commands_cmd = CommandsCmd(self.cmd_manager, arg)
+          commands_cmd = CommandsCmd(self.cmd_manager,
+                                     arg.args)
           if arg:
-               exit_status = commands_cmd.onecmd(arg)
+               exit_status = commands_cmd.onecmd(arg.args)
           else:
                exit_status = commands_cmd.cmdloop()
 
@@ -135,28 +161,30 @@ class ConfigureCmd(cmd2.Cmd):
 
      def do_environment(self, arg):
           'Environment submenu: environment [<arg>]'
-          env_cmd = EnvironmentCmd(self.env_manager, arg)
-          if arg:
-               exit_status = env_cmd.onecmd(arg)
-          else:
-               exit_status = env_cmd.cmdloop()
+          env_cmd = EnvironmentCmd(self.env_manager, 
+                                   arg.args)
+          # if arg:
+          #      exit_status = env_cmd.onecmd(arg.args)
+          # else:
+          print('pre')
+          env_cmd.cmdloop()
+          #print(exit_status)
 
-          if exit_status == 2:
-               self.exit_code = 2
-               return True
+          #if exit_status == 2:
+          #     self.exit_code = 2
+               #return self.exit_code
+
      
      def do_back(self, arg):
           'Return to the main menu: back'
           self.exit_code = 1
-          return True
+          return self.exit_code
      
      def do_quit(self, arg):
           'Exit the application: quit'
           self.exit_code = 2
           return self.exit_code
-
-     #def do_help(self, arg):
-     #     common_help(self, arg)
+     
 
 @class_logger(logger_instance)
 class HostsCmd(cmd2.Cmd):
@@ -183,7 +211,7 @@ class HostsCmd(cmd2.Cmd):
      def do_back(self, arg):
           'Return to the main menu: back'
           self.exit_code = 1
-          return True
+          return self.exit_code
      
      def do_quit(self, arg):
           'Exit the application: quit'
@@ -290,7 +318,7 @@ class CommandsCmd(cmd2.Cmd):
      def do_back(self, arg):
           'Return to the main menu: back'
           self.exit_code = 1
-          return True
+          return self.exit_code
      
      def do_quit(self, arg):
           'Exit the application: quit'
