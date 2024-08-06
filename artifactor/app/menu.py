@@ -1,10 +1,12 @@
 import types
 from cmd import Cmd
+from config import CommandManager
 from utils import ExitApplication, Logger, class_logger, common_help
 import cmd2
 
 logger_instance = Logger()
-     
+
+
 @class_logger(logger_instance)
 class MainCmd(cmd2.Cmd):
      prompt = 'artc> '
@@ -24,7 +26,7 @@ class MainCmd(cmd2.Cmd):
      parser_commands = configure_subparser.add_parser('commands', help='commands help', 
                                                   epilog='The copy command is intended for copying from a distro ' +
                                                   'where the source and destination command would match.')
-     parser_commands.add_argument('t', type=str, help='add, copy, load, save')
+     parser_commands.add_argument('t', type=str, help='add, copy, load, save, show')
      parser_commands.add_argument('-s', type=str, help='source distro for copy')
      parser_commands.add_argument('-d', type=str, help='destination distro for copy')
      parser_commands.add_argument('-c', type=str, help='command for copy')
@@ -33,14 +35,14 @@ class MainCmd(cmd2.Cmd):
      parser_env = configure_subparser.add_parser('env', help='environment help')
      parser_env.add_argument('t', type=str, help='set, show')
      parser_env.add_argument('-n', type=str, help='variable name to set')
-     parser_env.add_argument('-v', type=str, help='value to set')     
+     parser_env.add_argument('-v', type=str, help='value to set')   
      
      def __init__(self, env_manager, host_manager, cmd_manager, cmd_executor):
           super().__init__()
           self.env_manager = env_manager
           self.host_manager = host_manager
           self.cmd_manager = cmd_manager
-          self.cmd_executor = cmd_executor
+          self.cmd_executor = cmd_executor  
 
           self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
           del cmd2.Cmd.do_edit
@@ -48,13 +50,89 @@ class MainCmd(cmd2.Cmd):
           del cmd2.Cmd.do_run_script
           del cmd2.Cmd.do_set
           del cmd2.Cmd.do_shell
-          del cmd2.Cmd.do_shortcuts          
+          del cmd2.Cmd.do_shortcuts
 
-     def load_hosts(self, arg):
-          """hosts subcommand for load command"""
-          self.host_manager.hosts_file = arg
-          self.host_manager.hosts = self.host_manager.load_hosts()
-          print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
+     def hosts(self, args):
+          """modify hosts"""
+          if args.t == 'add':
+               if self.host_manager.add_host(args.i):
+                    print(f"Host {args.i} added. Hosts saved to {self.host_manager.hosts_file}.")
+               else:
+                    print(f"Host {args.i} is already in the list.")
+          elif args.t == 'load':
+               Host().load_hosts(args.f)
+               print(f"Hosts loaded from file: {args.f}")
+
+     def commands(self, args):
+          """modify commands"""
+          if args.t == 'add':
+               Commands().add_command()
+          elif args.t == 'load':
+               if args.f:
+                    Commands().load_commands(args.f)
+               else:
+                    self.cmd_manager.load_commands()
+          elif args.t == 'save':
+               Commands().save_commands()
+          elif args.t == 'copy':
+               Commands().copy_command(args.s, args.d, args.c)
+
+     def environment(self, args):
+          """modify environment"""
+          if args.t == 'show':
+               Environment().show_environment()
+          elif args.t == 'set':
+               Environment().set_environment(args.n, args.v)
+
+     @cmd2.with_argparser(run_parser)
+     def do_run(self, arg):
+          """run a command on hosts loaded to application""" 
+          self.run_parser.add_argument('c', type=str, choices=list(self.cmd_manager.commands.keys()))
+          run_cmd = RunCmd(self.env_manager, 
+                         self.cmd_manager,
+                         self.cmd_executor,
+                         self.host_manager,
+                         arg)
+          if arg and self.host_manager.hosts:
+               exit_status = run_cmd.onecmd(arg)
+          elif self.host_manager.hosts:
+               exit_status = run_cmd.cmdloop()
+          else:
+               print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
+
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
+
+     parser_hosts.set_defaults(func=hosts)
+     parser_commands.set_defaults(func=commands)
+     parser_env.set_defaults(func=environment)
+
+     @cmd2.with_argparser(configure_parser)
+     def do_configure(self, args):
+          """configure additional settings in application"""
+          func = getattr(args, 'func', None)
+          if func is not None:
+               # Call whatever subcommand function was selected
+               func(self, args)
+          else:
+               # No subcommand was provided, so call help
+               self.do_help('configure')
+
+     def do_ping(self, arg):
+          """run ping scan"""
+          hosts = [item.strip() for item in arg.split(',') if item.strip()]
+          hosts = hosts or self.host_manager.hosts
+          for host in hosts:
+               print(f"{host}: {self.cmd_executor.ping_ttl(self.env_manager, host)}")
+
+     def do_quit(self, arg):
+          """exit the application"""
+          self.exit_code = 2
+          return True
+
+class Commands():
+     """place to organize the commands parser commands"""  
 
      def add_command(self):
           """add or update a command with a series of menus"""
@@ -141,6 +219,9 @@ class MainCmd(cmd2.Cmd):
           self.cmd_manager.save_commands()
           print("Commands saved.")
 
+class Environment():
+     """place to organize environment commands for parser"""
+
      def set_environment(self, var, val):
           """set environment variables"""
           var_digits = ['PING_COUNT','PING_TIMEOUT']
@@ -161,103 +242,24 @@ class MainCmd(cmd2.Cmd):
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print() 
 
-     def hosts(self, args):
-          """modify hosts"""
-          if args.t == 'add':
-               if self.host_manager.add_host(args.i):
-                    print(f"Host {args.i} added. Hosts saved to {self.host_manager.hosts_file}.")
-               else:
-                    print(f"Host {args.i} is already in the list.")
-          elif args.t == 'load':
-               self.load_hosts(args.f)
-               print(f"Hosts loaded from file: {args.f}")
+class Host():
+     """place to organizer host commands for parser"""
 
-     def commands(self, args):
-          """modify commands"""
-          if args.t == 'add':
-               self.add_command()
-          elif args.t == 'load':
-               if args.f:
-                    self.load_commands(args.f)
-               else:
-                    self.cmd_manager.load_commands()
-          elif args.t == 'save':
-               self.save_commands()
-          elif args.t == 'copy':
-               self.copy_command(args.s, args.d, args.c)
+     def load_hosts(self, arg):
+          """hosts subcommand for load command"""
+          self.host_manager.hosts_file = arg
+          self.host_manager.hosts = self.host_manager.load_hosts()
+          print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
 
-     def environment(self, args):
-          """modify environment"""
-          if args.t == 'show':
-               self.show_environment()
-          elif args.t == 'set':
-               self.set_environment(args.n, args.v)
+class Run():
+     """run commands in application"""
 
-     @cmd2.with_argparser(run_parser)
-     def do_run(self, arg):
-          """run a command on hosts loaded to application"""    
-          run_cmd = RunCmd(self.env_manager, 
-                         self.cmd_manager,
-                         self.cmd_executor,
-                         self.host_manager,
-                         arg)
-          if arg and self.host_manager.hosts:
-               exit_status = run_cmd.onecmd(arg)
-          elif self.host_manager.hosts:
-               exit_status = run_cmd.cmdloop()
-          else:
-               print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
-
-          if exit_status == 2:
-               self.exit_code = 2
-               return True
-
-     parser_hosts.set_defaults(func=hosts)
-     parser_commands.set_defaults(func=commands)
-     parser_env.set_defaults(func=environment)
-
-     @cmd2.with_argparser(configure_parser)
-     def do_configure(self, args):
-          """configure additional settings in application"""
-          func = getattr(args, 'func', None)
-          if func is not None:
-               # Call whatever subcommand function was selected
-               func(self, args)
-          else:
-               # No subcommand was provided, so call help
-               self.do_help('configure')
-
-     def do_ping(self, arg):
-          """run ping scan"""
-          hosts = [item.strip() for item in arg.split(',') if item.strip()]
-          hosts = hosts or self.host_manager.hosts
-          for host in hosts:
-               print(f"{host}: {self.cmd_executor.ping_ttl(self.env_manager, host)}")
-
-     def do_quit(self, arg):
-          """exit the application"""
-          self.exit_code = 2
-          return True
-
-
-@class_logger(logger_instance)
-class RunCmd(cmd2.Cmd):
-     'Run commands in application: <sub-command>'
-     prompt = 'artc-run> '
-
-     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):
+     def __init__(self):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
-          self.arg = arg
-          self.cmd_manager = cmd_manager
-          self.cmd_executor = cmd_executor
-          self.env_manager = env_manager
-          self.host_manager = host_manager
           self.selected_command = None
           self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
-
-          self.hidden_commands = ['alias','macro', '_relative_run_script', 'eof']
 
      def _create_dynamic_commands(self):
           'This generates a dynamic list of commands to run: none'
@@ -289,16 +291,3 @@ class RunCmd(cmd2.Cmd):
           else:
                print("No commands available.")
                return
-
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          self.exit_code = 1
-          return True
-     
-     def do_quit(self, arg):
-          'Exit the application: quit'
-          self.exit_code = 2
-          return self.exit_code
-
-     #def do_help(self, arg):
-     #   common_help(self, arg, run_case=True)
