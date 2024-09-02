@@ -77,17 +77,8 @@ class MainCmd(Cmd):
           }
           setattr(self, 'complete_configure', create_complete_methods('configure', configure_fetchers).__get__(self))
 
-     @staticmethod
-     def _get_functions_static(cls):
-          """Static version of _get_functions to be used within static context."""
-          methods = []
-          for name, func in inspect.getmembers(cls, predicate=inspect.isfunction):
-               if not name.startswith('_'):
-                    methods.append(name)
-          return methods
-
      def _generate_command_map(self):
-          """dynamically generate the command map"""
+          """dynamically generate the base command map"""
           command_map = {}
           for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
                if name.startswith('do_'):
@@ -119,7 +110,7 @@ class MainCmd(Cmd):
           """configure additional settings in application"""
           args = args.split()
           if not args or args[0] == 'help':
-               self.print_dynamic_help('configure', ['hosts', 'commands', 'environment'])
+               self.print_dynamic_help(Configure)
                return
           
           subcommand = args[0]
@@ -145,91 +136,44 @@ class MainCmd(Cmd):
           self.exit_code = 2
           return True
 
-     def print_dynamic_help(self, command_path, subcommands):
+     def print_dynamic_help(self, cls):
           """dynamically generate and print help information with descriptions from docstrings"""
-          current_method = self.command_map.get(command_path)
-          description = inspect.getdoc(current_method) if current_method else "No description available"
+          name =  cls.__name__.lower()
+          description = inspect.getdoc(cls) if cls else "No description available"
 
-          print(f"{command_path} - {description}")
-          print("Usage:")
-          print(f"  {command_path} <subcommand>")
-          if subcommands:
-               print("Subcommands:")
-               for subcommand in subcommands:
-                    subcommand_path = f"{command_path} {subcommand}"
-                    subcommand_method = self.command_map.get(subcommand_path)
-                    subcommand_description = inspect.getdoc(subcommand_method) or "No description available"
-                    print(f"  {subcommand} - {subcommand_description}")
-          print("  help - Show this message")
+          print(f"\n{name} - {description}")
+          print("\nUsage:")
+          print(f"  {name} <subcommand>")
+
+          subcls = cls.__subclasses__()
+          if subcls:
+               print("\nSubcommands:")
+               for method in subcls:
+                    subcommand = method.__name__.lower()
+                    subcommand_description = inspect.getdoc(method) or "No description available"
+                    print(f"  {subcommand:<20}     {subcommand_description}")
 
      def completenames(self, text, *ignored):
-          """Override to complete command names with a trailing space."""
-          matches = []
+          """override command complete with a trailing space"""
           text_parts = text.split()
 
+          if not text_parts:
+               # if no text, suggest all top level commands
+               return sorted({cmd.split()[0] + ' ' for cmd in self.command_map if ' ' not in cmd})
+          
           if len(text_parts) == 1:
-               # Top-level command completion: Suggest only commands without spaces
-               for cmd in self.command_map:
-                    if ' ' not in cmd and cmd.startswith(text_parts[0]):
-                         matches.append(cmd.split()[0] + ' ')
-          elif len(text_parts) > 1:
-               # Handle subcommands and nested commands after a top-level command
-               current_path = ' '.join(text_parts[:-1])
-               for cmd in self.command_map:
-                    if cmd.startswith(current_path) and len(cmd.split()) == len(text_parts):
-                         next_part = cmd.split()[len(text_parts) - 1]
-                         if next_part.startswith(text_parts[-1]):
-                              matches.append(next_part + ' ')
+               # top level command completion
+               return sorted({cmd.split()[0] + ' ' for cmd in self.command_map if ' ' not in cmd and cmd.startswith(text_parts[0])})
 
-          # If nothing is typed, suggest all top-level commands
-          if not text:
-               for cmd in self.command_map:
-                    if ' ' not in cmd:
-                         matches.append(cmd.split()[0] + ' ')
-
-          return list(sorted(set(matches)))  # Remove duplicates
-     
-     def _get_functions(self, cls):
-               methods = []
-               for name, func in inspect.getmembers(cls, predicate=inspect.isfunction):
-                    if not name.startswith('_'):
-                         methods.append(name)
-               return methods
 
 class Configure():
      """configure submenu"""
-
-     def do_commands(self, args):
-          """modify commands"""
-          if args.arg == 'add':
-               Commands().add_command()
-          elif args.arg == 'load':
-               if args.f:
-                    Commands().load_commands(args.f)
-               else:
-                    self.cmd_manager.load_commands()
-          elif args.arg == 'save':
-               Commands().save_commands()
-          elif args.arg == 'copy':
-               Commands().copy_command(args.s, args.d, args.c)
-          elif args.arg == 'show':
-               print(list(self.cmd_manager.commands.keys()))
-
-     def environment(self, args):
-          """modify environment"""
-          if args.arg == 'show':
-               Environment().show_environment()
-          elif args.arg == 'set':
-               Environment().set_environment(args.n, args.v)
-
-     def get_nested_commands(self):
-          """Return the list of nested command names."""
-          return list(Configure.hosts_args)
 
 class Hosts(Configure):
      """modify hosts"""
      def __init__(self, app, args):
           self.host_manager = app.host_manager
+          self.command_map = dir(Hosts)
           subcmd = getattr(self, args[0])
           if len(args) > 1:
                subcmd(args[1])
@@ -261,15 +205,17 @@ class Hosts(Configure):
 
      def help(self):
           """print help"""
-          for name, method in self.command_map.items():
-               print(f"{name} - {inspect.getdoc(method)}")
-
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
 class Commands(Configure):
      """place to organize the commands parser commands"""  
 
      def __init__(self, app, args):
           self.cmd_manager = app.cmd_manager
+          self.command_map = dir(Commands)
           subcmd = getattr(self, args[0])
           if len(args) > 1:
                subcmd(args[1])
@@ -367,22 +313,31 @@ class Commands(Configure):
      def show_commands(self, arg):
           """show commands"""
           print(list(self.cmd_manager.commands.keys()))
+     
+     def help(self):
+          """print help"""
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
 class Environment(Configure):
      """place to organize environment commands for parser"""
 
      def __init__(self, app, args):
           self.env_manager = app.env_manager
+          self.command_map = dir(Environment)
           subcmd = getattr(self, args[0])
           if len(args) > 1:
                subcmd(args[1])
           else:
                try:
                     subcmd()
-               except:
+               except Exception as E:
+                    print(E)
                     print('Command takes an argument')
 
-     def set_environment(self, var, val):
+     def set(self, var, val):
           """set environment variables"""
           var_digits = ['PING_COUNT','PING_TIMEOUT']
           if var in var_digits:
@@ -395,12 +350,19 @@ class Environment(Configure):
           else:
                self.env_manager.set_env_var(var, val)
 
-     def show_environment(self):
+     def show(self):
           'Show existing environment configuration: show'
           print("\n\033[1;31mconfiguration:\033[0m")
           for var in self.env_manager.env_vars:
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print() 
+
+     def help(self):
+          """print help"""
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
 class Run():
      """run commands in application"""
