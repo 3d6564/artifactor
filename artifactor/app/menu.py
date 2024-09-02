@@ -3,7 +3,7 @@ import inspect
 from cmd import Cmd
 from config import CommandManager
 from utils import ExitApplication, Logger, class_logger, common_help, ip_check
-#import cmd2
+
 
 logger_instance = Logger()
 
@@ -16,7 +16,7 @@ def dynamic_complete(self, text, line, begidx, endidx, command_name, subcommand_
           return []
 
      # fetch possible primary subcommands
-     possible_matches = subcommand_fetchers.get('', lambda: [])()
+     possible_matches = subcommand_fetchers.get(command_name)
 
      # if remaining_text is empty, suggest primary subcommands
      if not remaining_text:
@@ -34,7 +34,7 @@ def dynamic_complete(self, text, line, begidx, endidx, command_name, subcommand_
 
      # get nested subcommands if subcommand fully typed
      if primary_subcommand in subcommand_fetchers:
-          subcommands = subcommand_fetchers[primary_subcommand]()
+          subcommands = subcommand_fetchers[primary_subcommand]
           return [sc for sc in subcommands if sc.startswith(remaining_subtext)]
 
      return []
@@ -45,15 +45,14 @@ def create_complete_methods(command_name, subcommand_fetchers):
           return dynamic_complete(self, text, line, begidx, endidx, command_name, subcommand_fetchers)
      return complete_method
 
-def fetch_configure_subcommands():
+def fetch_subclasses(cls):
     # Primary subcommands under 'configure'
-    subcommands = [subclass.__name__.lower() for subclass in Configure.__subclasses__()]
+    subcommands = [subclass.__name__.lower() for subclass in cls.__subclasses__()]
     return subcommands + ['help']
 
-def fetch_hosts_subcommands():
+def fetch_nested_submethods(cls, sub_cls):
     # Nested subcommands under 'configure hosts'
-    subcommands = list(set(dir(Hosts)) - set(dir(Configure)))
-    print(f"Fetched Hosts Subcommands: {subcommands}")
+    subcommands = list(set(dir(sub_cls)) - set(dir(cls)))
     return subcommands + ['help']
 
 @class_logger(logger_instance)
@@ -71,8 +70,10 @@ class MainCmd(Cmd):
           self.command_map = self._generate_command_map()
 
           configure_fetchers = {
-            '': fetch_configure_subcommands,  # Primary subcommands
-            'hosts': fetch_hosts_subcommands,  # Nested subcommands under 'hosts'
+            'configure': fetch_subclasses(Configure),
+            'hosts': fetch_nested_submethods(Configure, Hosts),
+            'commands': fetch_nested_submethods(Configure, Commands),
+            'environment': fetch_nested_submethods(Configure, Environment),
           }
           setattr(self, 'complete_configure', create_complete_methods('configure', configure_fetchers).__get__(self))
 
@@ -126,9 +127,9 @@ class MainCmd(Cmd):
           if subcommand == "hosts":
                Hosts(self, args[1:])
           elif subcommand == "commands":
-               Commands(args[1:])
+               Commands(self, args[1:])
           elif subcommand == 'environment':
-               Environment(args[1:])
+               Environment(self, args[1:])
           else:
                print(f"Unknown subcommand: {subcommand}")
 
@@ -267,6 +268,17 @@ class Hosts(Configure):
 class Commands(Configure):
      """place to organize the commands parser commands"""  
 
+     def __init__(self, app, args):
+          self.cmd_manager = app.cmd_manager
+          subcmd = getattr(self, args[0])
+          if len(args) > 1:
+               subcmd(args[1])
+          else:
+               try:
+                    subcmd()
+               except:
+                    print('Command takes an argument')
+
      def add_command(self):
           """add or update a command with a series of menus"""
 
@@ -358,6 +370,17 @@ class Commands(Configure):
 
 class Environment(Configure):
      """place to organize environment commands for parser"""
+
+     def __init__(self, app, args):
+          self.env_manager = app.env_manager
+          subcmd = getattr(self, args[0])
+          if len(args) > 1:
+               subcmd(args[1])
+          else:
+               try:
+                    subcmd()
+               except:
+                    print('Command takes an argument')
 
      def set_environment(self, var, val):
           """set environment variables"""
