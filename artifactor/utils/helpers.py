@@ -1,4 +1,5 @@
 import os
+import ipaddress
 
 
 def common_help(instance, arg, run_case=False):
@@ -87,3 +88,10 @@ def clean_results(result):
     lines = result.splitlines()
     cleaned_lines = [line for line in lines if line.strip()]
     return "\n".join(cleaned_lines)
+
+def ip_check(ip_str):
+    try:
+        ipaddress.ip_address(ip_str)
+        return True
+    except ValueError:
+        return False

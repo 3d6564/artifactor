@@ -9,7 +9,7 @@ from .parallel_executor import ParallelExecutor
 class CommandManager:
 
     def __init__(self, commands_file='commands.json'):
-        """ Initialize commands for the application from file."""
+        """Initialize commands for the application from file."""
         self.commands_template = 'commands.json.template'
         self.commands_file = commands_file
         self.commands = self.load_commands()
