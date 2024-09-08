@@ -66,7 +66,10 @@ class MainCmd(Cmd):
           self.host_manager = host_manager
           self.cmd_manager = cmd_manager
           self.cmd_executor = cmd_executor
-          self.configure_handler = Configure()
+          self.run_cmd = Run(self.env_manager, 
+                         self.cmd_manager,
+                         self.cmd_executor,
+                         self.host_manager)
           self.command_map = self._generate_command_map()
 
           configure_fetchers = {
@@ -76,6 +79,11 @@ class MainCmd(Cmd):
             'environment': fetch_nested_submethods(Configure, Environment),
           }
           setattr(self, 'complete_configure', create_complete_methods('configure', configure_fetchers).__get__(self))
+
+          run_fetchers = {
+            'run': fetch_nested_submethods(Run, self.run_cmd)
+          }
+          setattr(self, 'complete_run', create_complete_methods('run', run_fetchers).__get__(self))
 
      def _generate_command_map(self):
           """dynamically generate the base command map"""
@@ -90,20 +98,15 @@ class MainCmd(Cmd):
      def do_run(self, args):
           """run a command on hosts loaded to application"""
           args = args.split()
-          run_cmd = Run(self.env_manager, 
-                         self.cmd_manager,
-                         self.cmd_executor,
-                         self.host_manager,
-                         args[0])
           if not args or args[0] == 'help':
               # print(type(run_cmd))
-               self.print_dynamic_help(Run, run_cmd)
+               self.print_dynamic_help(Run, self.run_cmd)
                return
           
           if args[0] and self.host_manager.hosts:
-               exit_status = run_cmd.onecmd(args[0])
+               exit_status = self.run_cmd.onecmd(args[0])
           elif self.host_manager.hosts:
-               exit_status = run_cmd.cmdloop()
+               exit_status = self.run_cmd.cmdloop()
           else:
                print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
 
@@ -394,7 +397,7 @@ class Environment(Configure):
 
 class Run(Cmd):
      """run commands in application"""
-     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):
+     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
           self.env_manager = env_manager
