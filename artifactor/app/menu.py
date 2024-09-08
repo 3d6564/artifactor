@@ -87,16 +87,21 @@ class MainCmd(Cmd):
 
           return command_map
 
-     def do_run(self, arg):
-          """run a command on hosts loaded to application""" 
-          self.run_parser.add_argument('c', type=str, choices=list(self.cmd_manager.commands.keys()))
+     def do_run(self, args):
+          """run a command on hosts loaded to application"""
+          args = args.split()
           run_cmd = Run(self.env_manager, 
                          self.cmd_manager,
                          self.cmd_executor,
                          self.host_manager,
-                         arg)
-          if arg and self.host_manager.hosts:
-               exit_status = run_cmd.onecmd(arg)
+                         args[0])
+          if not args or args[0] == 'help':
+              # print(type(run_cmd))
+               self.print_dynamic_help(Run, run_cmd)
+               return
+          
+          if args[0] and self.host_manager.hosts:
+               exit_status = run_cmd.onecmd(args[0])
           elif self.host_manager.hosts:
                exit_status = run_cmd.cmdloop()
           else:
@@ -124,9 +129,12 @@ class MainCmd(Cmd):
           else:
                print(f"Unknown subcommand: {subcommand}")
 
-     def do_ping(self, arg):
+     def do_ping(self, args):
           """run ping scan"""
-          hosts = [item.strip() for item in arg.split(',') if item.strip()]
+          args = args.split(',')
+          if not args or args[0] == 'help':
+               return
+          hosts = [item.strip() for item in args if item.strip()]
           hosts = hosts or self.host_manager.hosts
           for host in hosts:
                print(f"{host}: {self.cmd_executor.ping_ttl(self.env_manager, host)}")
@@ -136,7 +144,7 @@ class MainCmd(Cmd):
           self.exit_code = 2
           return True
 
-     def print_dynamic_help(self, cls):
+     def print_dynamic_help(self, cls, args):
           """dynamically generate and print help information with descriptions from docstrings"""
           name =  cls.__name__.lower()
           description = inspect.getdoc(cls) if cls else "No description available"
@@ -145,13 +153,28 @@ class MainCmd(Cmd):
           print("\nUsage:")
           print(f"  {name} <subcommand>")
 
-          subcls = cls.__subclasses__()
-          if subcls:
+          if args:
+               methods = [
+                    method_name for method_name in dir(args)
+                    if method_name.startswith('do_')
+               ]
+          else:
+               subcls = cls.__subclasses__()
+          if methods:
+               print("\nSubcommands:")
+               for method_name in methods:
+                    method = getattr(args, method_name)
+                    subcommand = method_name[3:]
+                    subcommand_description = inspect.getdoc(method) or "No description available"
+                    print(f"  {subcommand:<20}     {subcommand_description}")
+          elif subcls:
                print("\nSubcommands:")
                for method in subcls:
+                    print(method)
                     subcommand = method.__name__.lower()
                     subcommand_description = inspect.getdoc(method) or "No description available"
                     print(f"  {subcommand:<20}     {subcommand_description}")
+
 
      def completenames(self, text, *ignored):
           """override command complete with a trailing space"""
@@ -183,23 +206,29 @@ class Hosts(Configure):
                except:
                     print('Command takes an argument')
 
-     def add(self, arg):
+     def add(self, args):
           """add a host to the host file"""
-          if not any(arg in host for host in self.host_manager.hosts):
-               if ip_check(arg):
-                    if self.host_manager.add_host(arg):
-                         print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
+          args = args.split()
+          if not args or args[0] == 'help':
+               return
+          if not any(args[0] in host for host in self.host_manager.hosts):
+               if ip_check(args[0]):
+                    if self.host_manager.add_host(args[0]):
+                         print(f"Host {args[0]} added. Hosts saved to {self.host_manager.hosts_file}.")
                else:
-                    print(f"Host {arg} was not a valid ip address.")
+                    print(f"Host {args[0]} was not a valid ip address.")
           else:
-               print(f"Host {arg} is already in the list.")
+               print(f"Host {args[0]} is already in the list.")
 
-     def load(self, arg):
+     def load(self, args):
           """load hosts from file"""
-          self.host_manager.hosts = self.host_manager.load_hosts(arg)
-          print(f"Hosts loaded from file: {arg}")
+          args = args.split()
+          if not args or args[0] == 'help':
+               return
+          self.host_manager.hosts = self.host_manager.load_hosts(args[0])
+          print(f"Hosts loaded from file: {args[0]}")
 
-     def show(self):
+     def show(self, args):
           """show hosts loaded"""
           print(self.host_manager.hosts)
 
@@ -225,9 +254,8 @@ class Commands(Configure):
                except:
                     print('Command takes an argument')
 
-     def add_command(self):
+     def add_command(self,args ):
           """add or update a command with a series of menus"""
-
           command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
           if command_name == 'exit' or not command_name:
                return
@@ -350,51 +378,57 @@ class Environment(Configure):
           else:
                self.env_manager.set_env_var(var, val)
 
-     def show(self):
+     def show(self, args):
           'Show existing environment configuration: show'
           print("\n\033[1;31mconfiguration:\033[0m")
           for var in self.env_manager.env_vars:
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print() 
 
-     def help(self):
+     def help(self, args):
           """print help"""
           print("\nSubcommands:")
           for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
                if name not in set(dir(Configure)):
                     print(f"  {name:<20}     {inspect.getdoc(method)}")
 
-class Run():
+class Run(Cmd):
      """run commands in application"""
-
-     def __init__(self):
+     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
+          self.env_manager = env_manager
+          self.host_manager = host_manager
+          self.cmd_manager = cmd_manager
+          self.cmd_executor = cmd_executor
           self.selected_command = None
           self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
+          ##print(self.__dict__.items())
 
      def _create_dynamic_commands(self):
           'This generates a dynamic list of commands to run: none'
           def create_method(cmd, description):
-            def dynamic_method(self, arg):
-                'Dynamically generated method for each command'
-                self.selected_command = cmd
-                self.cmd_executor.run_command(
-                    self.env_manager,
-                    self.selected_command,
-                    self.host_manager.hosts
-                )
-                return True
-            dynamic_method.__name__ = f'do_{cmd}'
-            dynamic_method.__doc__ = f'{cmd}: {description}'
-            return dynamic_method
+               def dynamic_method(self, arg):
+                    'Dynamically generated method for each command'
+                    self.selected_command = cmd
+                    self.cmd_executor.run_command(
+                         self.env_manager,
+                         self.selected_command,
+                         self.host_manager.hosts
+                    )
+                    return True
+               dynamic_method.__name__ = f'do_{cmd}'
+               dynamic_method.__doc__ = f'{description}'
+               return dynamic_method
 
           for command in self.commands:
                description = self.cmd_manager.commands[command].get('description', 'No description available')
                method = create_method(command, description)
                setattr(self, method.__name__, types.MethodType(method, self))
 
+     """
+     Currently not used
      def do_list(self, arg):
           'List commands to run: list'
           commands = list(self.cmd_manager.commands.keys())
@@ -404,3 +438,4 @@ class Run():
           else:
                print("No commands available.")
                return
+     """
