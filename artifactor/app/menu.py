@@ -1,8 +1,7 @@
 import types
 import inspect
 from cmd import Cmd
-from config import CommandManager
-from utils import ExitApplication, Logger, class_logger, common_help, ip_check
+from utils import Logger, class_logger, ip_check
 
 
 logger_instance = Logger()
@@ -135,10 +134,10 @@ class MainCmd(Cmd):
           else:
                print(f"Unknown subcommand: {subcommand}")
 
-     def do_ping(self, args):
+     def do_ping(self, args=None):
           """run ping scan"""
           args = args.split(',')
-          if not args or args[0] == 'help':
+          if args[0] == '' or args[0] == 'help':
                return
           hosts = [item.strip() for item in args if item.strip()]
           hosts = hosts or self.host_manager.hosts
@@ -149,8 +148,16 @@ class MainCmd(Cmd):
           """exit the application"""
           self.exit_code = 2
           return True
+     
+     def do_help(self, args=None):
+          """print help"""
+          print("\nCommands:")
+          for name, method in sorted(inspect.getmembers(self, predicate=inspect.ismethod)):
+               if name.startswith('do_'):
+                    name = name.replace('do_', '')
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
-     def print_dynamic_help(self, cls, args):
+     def print_dynamic_help(self, cls, args=None):
           """dynamically generate and print help information with descriptions from docstrings"""
           name =  cls.__name__.lower()
           description = inspect.getdoc(cls) if cls else "No description available"
@@ -166,6 +173,7 @@ class MainCmd(Cmd):
                ]
           else:
                subcls = cls.__subclasses__()
+               methods = None
           if methods:
                print("\nSubcommands:")
                for method_name in methods:
@@ -176,7 +184,6 @@ class MainCmd(Cmd):
           elif subcls:
                print("\nSubcommands:")
                for method in subcls:
-                    print(method)
                     subcommand = method.__name__.lower()
                     subcommand_description = inspect.getdoc(method) or "No description available"
                     print(f"  {subcommand:<20}     {subcommand_description}")
