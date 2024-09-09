@@ -1,175 +1,274 @@
 import types
+import inspect
 from cmd import Cmd
-from utils import ExitApplication, Logger, class_logger, common_help
+from utils import Logger, class_logger, ip_check
 
 
 logger_instance = Logger()
+
+def dynamic_complete(self, text, line, begidx, endidx, command_name, subcommand_fetchers):
+     """dynamic method for tab completion of subcommands and nested subcommands."""
      
+     try:
+          remaining_text = line[len(command_name):].strip()
+     except Exception:
+          return []
+
+     # fetch possible primary subcommands
+     possible_matches = subcommand_fetchers.get(command_name)
+
+     # if remaining_text is empty, suggest primary subcommands
+     if not remaining_text:
+          return [sc + ' ' for sc in possible_matches]
+
+     # split remaining_text to handle subcommands and nested subcommands
+     split_text = remaining_text.split(maxsplit=1)
+     primary_subcommand = split_text[0]
+     remaining_subtext = split_text[1] if len(split_text) > 1 else ''
+     
+     # check matching subcommand and not only a space typed
+     if ' ' not in remaining_text and primary_subcommand not in possible_matches:
+          filtered_matches = [sc for sc in possible_matches if sc.startswith(remaining_text)]
+          return [sc + ' ' for sc in filtered_matches]
+
+     # get nested subcommands if subcommand fully typed
+     if primary_subcommand in subcommand_fetchers:
+          subcommands = subcommand_fetchers[primary_subcommand]
+          return [sc for sc in subcommands if sc.startswith(remaining_subtext)]
+
+     return []
+
+def create_complete_methods(command_name, subcommand_fetchers):
+     """Create a complete_<command_name> method dynamically with support for nested subcommands."""
+     def complete_method(self, text, line, begidx, endidx):
+          return dynamic_complete(self, text, line, begidx, endidx, command_name, subcommand_fetchers)
+     return complete_method
+
+def fetch_subclasses(cls):
+    # Primary subcommands under 'configure'
+    subcommands = [subclass.__name__.lower() for subclass in cls.__subclasses__()]
+    return subcommands + ['help']
+
+def fetch_nested_submethods(cls, sub_cls):
+     # Nested subcommands under 'configure hosts'
+     methods = list(set(dir(sub_cls)) - set(dir(cls)))
+     if cls == Run:
+          methods = [method for method in methods if method.startswith('do_')]
+          methods = sorted([method[3:] if method.startswith('do_') else method for method in methods])
+     return methods + ['help']
+
 @class_logger(logger_instance)
 class MainCmd(Cmd):
      prompt = 'artc> '
      intro = '\ntype ? or help to list options'
-
+     
      def __init__(self, env_manager, host_manager, cmd_manager, cmd_executor):
           super().__init__()
           self.env_manager = env_manager
           self.host_manager = host_manager
           self.cmd_manager = cmd_manager
           self.cmd_executor = cmd_executor
-
-     def do_show(self, arg):
-          'Show existing environment configuration: show'
-          print("\n\033[1;31mconfiguration:\033[0m")
-          for var in self.env_manager.env_vars:
-               print(f"    {var}={self.env_manager.get_env_var(var)}")
-          print()
-
-     def do_load(self, arg):
-          'Load hosts or commands from the default or a custom file: load (hosts | commands) [<path/to/file>]'
-          type = arg.strip() if arg else ''
-          options = arg.split(' ', 1)
-          if type.startswith('hosts'):
-               self.host_manager.hosts_file = arg.split(' ', 1)[1].strip() if len(options) > 1 else self.host_manager.hosts_file
-               self.host_manager.hosts = self.host_manager.load_hosts()
-               print(f"Hosts loaded from {self.host_manager.hosts_file}: {self.host_manager.hosts}")
-          elif type.startswith('commands'):
-               self.cmd_manager.commands_file = arg.split(' ', 1)[1].strip() if len(options) > 1 else self.cmd_manager.commands_file
-               self.cmd_manager.commands = self.cmd_manager.load_commands()
-               print(f"Commands loaded from {self.cmd_manager.commands_file}")
-          else:
-               print("Invalid option. Nothing loaded.")
-
-     def do_run(self, arg):
-          'Run a command on hosts loaded to application: run [<command_name>]'     
-          run_cmd = RunCmd(self.env_manager, 
+          self.run_cmd = Run(self.env_manager, 
                          self.cmd_manager,
                          self.cmd_executor,
-                         self.host_manager,
-                         arg)
-          if arg and self.host_manager.hosts:
-               run_cmd.onecmd(arg)
+                         self.host_manager)
+          self.command_map = self._generate_command_map()
+
+          configure_fetchers = {
+            'configure': fetch_subclasses(Configure),
+            'hosts': fetch_nested_submethods(Configure, Hosts),
+            'commands': fetch_nested_submethods(Configure, Commands),
+            'environment': fetch_nested_submethods(Configure, Environment),
+          }
+          setattr(self, 'complete_configure', create_complete_methods('configure', configure_fetchers).__get__(self))
+
+          run_fetchers = {
+            'run': fetch_nested_submethods(Run, self.run_cmd)
+          }
+          setattr(self, 'complete_run', create_complete_methods('run', run_fetchers).__get__(self))
+
+     def _generate_command_map(self):
+          """dynamically generate the base command map"""
+          command_map = {}
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name.startswith('do_'):
+                    command_name = name[3:]  # remove 'do_' prefix
+                    command_map[command_name] = method
+
+          return command_map
+
+     def do_run(self, args):
+          """run a command on hosts loaded to application"""
+          args = args.split()
+          if not args or args[0] == 'help':
+              # print(type(run_cmd))
+               self.print_dynamic_help(Run, self.run_cmd)
+               return
+          
+          if args[0] and self.host_manager.hosts:
+               exit_status = self.run_cmd.onecmd(args[0])
           elif self.host_manager.hosts:
-               run_cmd.cmdloop()
+               exit_status = self.run_cmd.cmdloop()
           else:
                print("\033[1;31mNo hosts available. Please add hosts first.\033[0m")
+
+          if exit_status == 2:
+               self.exit_code = 2
+               return True
+
+     def do_configure(self, args):
+          """configure additional settings in application"""
+          args = args.split()
+          if not args or args[0] == 'help':
+               self.print_dynamic_help(Configure)
                return
+          
+          subcommand = args[0]
 
-     def do_configure(self, arg):
-          'Configure additional settings in application: configure [<sub-command>]'
-          configure_cmd = ConfigureCmd(self.env_manager, 
-                                        self.cmd_manager,
-                                        self.host_manager,
-                                        arg)
-          if arg:
-               configure_cmd.onecmd(arg)
+          if subcommand == "hosts":
+               Hosts(self, args[1:])
+          elif subcommand == "commands":
+               Commands(self, args[1:])
+          elif subcommand == 'environment':
+               Environment(self, args[1:])
           else:
-               configure_cmd.cmdloop()
+               print(f"Unknown subcommand: {subcommand}")
 
-     def do_ping(self, arg):
-          'Run ping scan: ping [<host>]'
-          hosts = [item.strip() for item in arg.split(',') if item.strip()]
+     def do_ping(self, args=None):
+          """run ping scan"""
+          args = args.split(',')
+          if args[0] == '' or args[0] == 'help':
+               return
+          hosts = [item.strip() for item in args if item.strip()]
           hosts = hosts or self.host_manager.hosts
           for host in hosts:
                print(f"{host}: {self.cmd_executor.ping_ttl(self.env_manager, host)}")
 
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
-
-     def do_help(self, arg):
-          common_help(self, arg)
-
-@class_logger(logger_instance)
-class ConfigureCmd(Cmd):
-     'Configure additional settings in application: <sub-command>'
-     prompt = 'artc-configure> '
-
-     def __init__(self, env_manager, cmd_manager, host_manager, arg):
-          super().__init__()
-          self.arg = arg
-          self.env_manager = env_manager
-          self.cmd_manager = cmd_manager
-          self.host_manager = host_manager
-
-     def do_hosts(self, arg):
-          'Hosts submenu: hosts [<arg>]'
-          hosts_cmd = HostsCmd(self.host_manager, arg)
-          if arg:
-               hosts_cmd.onecmd(arg)
-          else:
-               hosts_cmd.cmdloop()
-
-     def do_commands(self, arg):
-          'Commands submenu: commands [<arg>]'
-          commands_cmd = CommandsCmd(self.cmd_manager, arg)
-          if arg:
-               commands_cmd.onecmd(arg)
-          else:
-               commands_cmd.cmdloop()
-
-     def do_environment(self, arg):
-          'Environment submenu: environment [<arg>]'
-          env_cmd = EnvironmentCmd(self.env_manager, arg)
-          if arg:
-               env_cmd.onecmd(arg)
-          else:
-               env_cmd.cmdloop()
-     
-     def do_back(self, arg):
-          'Return to the main menu: back'
+     def do_quit(self, arg):
+          """exit the application"""
+          self.exit_code = 2
           return True
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def do_help(self, args=None):
+          """print help"""
+          print("\nCommands:")
+          for name, method in sorted(inspect.getmembers(self, predicate=inspect.ismethod)):
+               if name.startswith('do_'):
+                    name = name.replace('do_', '')
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     def print_dynamic_help(self, cls, args=None):
+          """dynamically generate and print help information with descriptions from docstrings"""
+          name =  cls.__name__.lower()
+          description = inspect.getdoc(cls) if cls else "No description available"
 
-@class_logger(logger_instance)
-class HostsCmd(Cmd):
-     'Configure host settings in application: <sub-command>'
-     prompt = 'artc-configure-hosts> '
+          print(f"\n{name} - {description}")
+          print("\nUsage:")
+          print(f"  {name} <subcommand>")
 
-     def __init__(self, host_manager, arg):
-          super().__init__()
-          self.arg = arg
-          self.host_manager = host_manager
-
-     def do_add(self, arg):
-          'Add a host and save to host file: add <hostname_or_ip>'
-          new_host = arg.strip()
-          if new_host == "":
-               print(f"Argument was empty.")
-          elif self.host_manager.add_host(new_host):
-               print(f"Host {arg} added. Hosts saved to {self.host_manager.hosts_file}.")
+          if args:
+               methods = [
+                    method_name for method_name in dir(args)
+                    if method_name.startswith('do_')
+               ]
           else:
-               print(f"Host {arg} is already in the list.")
-     
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          return True
-     
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+               subcls = cls.__subclasses__()
+               methods = None
+          if methods:
+               print("\nSubcommands:")
+               for method_name in methods:
+                    method = getattr(args, method_name)
+                    subcommand = method_name[3:]
+                    subcommand_description = inspect.getdoc(method) or "No description available"
+                    print(f"  {subcommand:<20}     {subcommand_description}")
+          elif subcls:
+               print("\nSubcommands:")
+               for method in subcls:
+                    subcommand = method.__name__.lower()
+                    subcommand_description = inspect.getdoc(method) or "No description available"
+                    print(f"  {subcommand:<20}     {subcommand_description}")
 
-     def do_help(self, arg):
-          common_help(self, arg)
 
-@class_logger(logger_instance)
-class CommandsCmd(Cmd):
-     'Configure run commands in application: <sub-command>'
-     prompt = 'artc-configure-commands> '
+     def completenames(self, text, *ignored):
+          """override command complete with a trailing space"""
+          text_parts = text.split()
 
-     def __init__(self, cmd_manager, arg):
-          super().__init__()
-          self.arg = arg
-          self.cmd_manager = cmd_manager
+          if not text_parts:
+               # if no text, suggest all top level commands
+               return sorted({cmd.split()[0] + ' ' for cmd in self.command_map if ' ' not in cmd})
+          
+          if len(text_parts) == 1:
+               # top level command completion
+               return sorted({cmd.split()[0] + ' ' for cmd in self.command_map if ' ' not in cmd and cmd.startswith(text_parts[0])})
 
-     def do_add(self, arg):
-          'Add or update a command with a series of menus: add'
 
+class Configure():
+     """configure submenu"""
+
+class Hosts(Configure):
+     """modify hosts"""
+     def __init__(self, app, args):
+          self.host_manager = app.host_manager
+          self.command_map = dir(Hosts)
+          subcmd = getattr(self, args[0])
+          if len(args) > 1:
+               subcmd(args[1])
+          else:
+               try:
+                    subcmd()
+               except:
+                    print('Command takes an argument')
+
+     def add(self, args):
+          """add a host to the host file"""
+          args = args.split()
+          if not args or args[0] == 'help':
+               return
+          if not any(args[0] in host for host in self.host_manager.hosts):
+               if ip_check(args[0]):
+                    if self.host_manager.add_host(args[0]):
+                         print(f"Host {args[0]} added. Hosts saved to {self.host_manager.hosts_file}.")
+               else:
+                    print(f"Host {args[0]} was not a valid ip address.")
+          else:
+               print(f"Host {args[0]} is already in the list.")
+
+     def load(self, args):
+          """load hosts from file"""
+          args = args.split()
+          if not args or args[0] == 'help':
+               return
+          self.host_manager.hosts = self.host_manager.load_hosts(args[0])
+          print(f"Hosts loaded from file: {args[0]}")
+
+     def show(self, args=None):
+          """show hosts loaded"""
+          print(self.host_manager.hosts)
+
+     def help(self, args=None):
+          """print help"""
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
+
+class Commands(Configure):
+     """place to organize the commands parser commands"""  
+
+     def __init__(self, app, args):
+          self.cmd_manager = app.cmd_manager
+          self.command_map = dir(Commands)
+          subcmd = getattr(self, args[0])
+          if len(args) > 1:
+               subcmd(args[1])
+          else:
+               try:
+                    subcmd()
+               except:
+                    print('Command takes an argument')
+
+     def add_command(self,args ):
+          """add or update a command with a series of menus"""
           command_name =  input("Enter the command name (no spaces) or exit: ").strip().lower()
           if command_name == 'exit' or not command_name:
                return
@@ -218,131 +317,131 @@ class CommandsCmd(Cmd):
                print("Invalid option. No command added.")
                return
 
-     def do_copy(self, arg):
-          'Copy a command from a distribution: copy'
+     def copy_command(self, src, dest, cmd):
+          """copy a command from a distribution"""
           while True:
-               command_name = input("Enter the command name you want to copy (or type 'back' to return): ")
-               if command_name.lower() == 'back':
-                    break
-               if command_name not in self.cmd_manager.commands:
-                    print(f"Command '{command_name}' does not exist.")
-                    continue
+               if not cmd:
+                    cmd = input("Enter the command name you want to copy (or type 'back' to return): ")
+                    if cmd.lower() == 'back':
+                         break
+                    if cmd not in self.cmd_manager.commands:
+                         print(f"Command '{cmd}' does not exist.")
+                         continue
+               if not src:
+                    src = input("Enter the source distribution: ")
+                    if src not in self.cmd_manager.commands[cmd]:
+                         print(f"Distribution '{src}' does not exist for command '{cmd}'.")
+                         continue
+               if not dest:
+                    dest = input("Enter the destination distribution: ")
 
-               src_distro = input("Enter the source distribution: ")
-               if src_distro not in self.cmd_manager.commands[command_name]:
-                    print(f"Distribution '{src_distro}' does not exist for command '{command_name}'.")
-                    continue
-
-               dest_distro = input("Enter the destination distribution: ")
-               self.cmd_manager.commands[command_name][dest_distro] = self.cmd_manager.commands[command_name][src_distro]
+               self.cmd_manager.commands[cmd][dest] = self.cmd_manager.commands[cmd][src]
                self.cmd_manager.save_commands()
-               print(f"Command '{command_name}' copied from '{src_distro}' to '{dest_distro}' successfully.")
+               print(f"Command '{cmd}' copied from '{src}' to '{dest}' successfully.")
                break
 
-     def do_load(self, arg):
-          'Load commands: load_commands'
-          self.cmd_manager.load_commands()
-          print("Commands loaded.")
+     def load_commands(self, arg):
+          """commands subcommand for load command"""
+          self.cmd_manager.commands_file = arg
+          self.cmd_manager.commands = self.cmd_manager.load_commands()
+          print(f"Commands loaded from {self.cmd_manager.commands_file}")
 
-     def do_save(self, arg):
-          'Save commands: save_commands'
+     def save_commands(self, arg):
+          """save commands"""
           self.cmd_manager.save_commands()
           print("Commands saved.")
 
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          return True
+     def show_commands(self, arg):
+          """show commands"""
+          print(list(self.cmd_manager.commands.keys()))
      
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+     def help(self, args=None):
+          """print help"""
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
-     def do_help(self, arg):
-          common_help(self, arg)
+class Environment(Configure):
+     """place to organize environment commands for parser"""
 
-@class_logger(logger_instance)
-class EnvironmentCmd(Cmd):
-     'Configure environment settings in application: <sub-command>'
-     prompt = 'artc-configure-environment> '
+     def __init__(self, app, args):
+          self.env_manager = app.env_manager
+          self.command_map = dir(Environment)
+          subcmd = getattr(self, args[0])
+          if len(args) > 1:
+               subcmd(args[1])
+          else:
+               try:
+                    subcmd()
+               except Exception as E:
+                    print(E)
+                    print('Command takes an argument')
 
-     def __init__(self, env_manager, arg):
-          super().__init__()
-          self.arg = arg
-          self.env_manager = env_manager
-
-     def do_set(self, arg):
-          'Modify environment variables: set <variable name> <value>'
+     def set(self, var, val):
+          """set environment variables"""
           var_digits = ['PING_COUNT','PING_TIMEOUT']
-          if arg.strip() == '?':
-               return self.do_show('?')
-          else:     
-               var, value = arg.split(' ', 1)
-               if var in var_digits:
-                    if value.isdigit():
-                         print(f'old value: {self.env_manager.get_env_var(var)}')
-                         self.env_manager.set_env_var(var, value)
-                         print(f'new value: {self.env_manager.get_env_var(var)}')
-                    else:
-                         print("Invalid input. Please enter a number.")
+          if var in var_digits:
+               if val.isdigit():
+                    print(f'old value: {self.env_manager.get_env_var(var)}')
+                    self.env_manager.set_env_var(var, val)
+                    print(f'new value: {self.env_manager.get_env_var(var)}')
                else:
-                    self.env_manager.set_env_var(var, value)
+                    print("Invalid input. Please enter a number.")
+          else:
+               self.env_manager.set_env_var(var, val)
 
-     def do_show(self, arg):
+     def show(self, args=None):
           'Show existing environment configuration: show'
           print("\n\033[1;31mconfiguration:\033[0m")
           for var in self.env_manager.env_vars:
                print(f"    {var}={self.env_manager.get_env_var(var)}")
-          print()
-     
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          return True
-     
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
+          print() 
 
-     def do_help(self, arg):
-          common_help(self, arg)
+     def help(self, args=None):
+          """print help"""
+          print("\nSubcommands:")
+          for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+               if name not in set(dir(Configure)):
+                    print(f"  {name:<20}     {inspect.getdoc(method)}")
 
-@class_logger(logger_instance)
-class RunCmd(Cmd):
-     'Run commands in application: <sub-command>'
-     prompt = 'artc-run> '
-
-     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager, arg):
+class Run(Cmd):
+     """run commands in application"""
+     def __init__(self, env_manager, cmd_manager, cmd_executor, host_manager):
           'Run a command on hosts loaded to application: run [<command_name>]'
           super().__init__()
-          self.arg = arg
-          self.cmd_manager = cmd_manager
-          self.cmd_executor = cmd_executor
           self.env_manager = env_manager
           self.host_manager = host_manager
+          self.cmd_manager = cmd_manager
+          self.cmd_executor = cmd_executor
           self.selected_command = None
           self.commands = list(self.cmd_manager.commands.keys())
           self._create_dynamic_commands()
+          ##print(self.__dict__.items())
 
      def _create_dynamic_commands(self):
           'This generates a dynamic list of commands to run: none'
           def create_method(cmd, description):
-            def dynamic_method(self, arg):
-                'Dynamically generated method for each command'
-                self.selected_command = cmd
-                self.cmd_executor.run_command(
-                    self.env_manager,
-                    self.selected_command,
-                    self.host_manager.hosts
-                )
-                return True
-            dynamic_method.__name__ = f'do_{cmd}'
-            dynamic_method.__doc__ = f'{cmd}: {description}'
-            return dynamic_method
+               def dynamic_method(self, arg):
+                    'Dynamically generated method for each command'
+                    self.selected_command = cmd
+                    self.cmd_executor.run_command(
+                         self.env_manager,
+                         self.selected_command,
+                         self.host_manager.hosts
+                    )
+                    return True
+               dynamic_method.__name__ = f'do_{cmd}'
+               dynamic_method.__doc__ = f'{description}'
+               return dynamic_method
 
           for command in self.commands:
                description = self.cmd_manager.commands[command].get('description', 'No description available')
                method = create_method(command, description)
                setattr(self, method.__name__, types.MethodType(method, self))
 
+     """
+     Currently not used
      def do_list(self, arg):
           'List commands to run: list'
           commands = list(self.cmd_manager.commands.keys())
@@ -352,14 +451,4 @@ class RunCmd(Cmd):
           else:
                print("No commands available.")
                return
-
-     def do_back(self, arg):
-          'Return to the main menu: back'
-          return True
-     
-     def do_exit(self, arg):
-          'Exit the application: exit'
-          raise ExitApplication
-
-     def do_help(self, arg):
-        common_help(self, arg, run_case=True)
+     """
