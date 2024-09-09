@@ -51,9 +51,12 @@ def fetch_subclasses(cls):
     return subcommands + ['help']
 
 def fetch_nested_submethods(cls, sub_cls):
-    # Nested subcommands under 'configure hosts'
-    subcommands = list(set(dir(sub_cls)) - set(dir(cls)))
-    return subcommands + ['help']
+     # Nested subcommands under 'configure hosts'
+     methods = list(set(dir(sub_cls)) - set(dir(cls)))
+     if cls == Run:
+          methods = [method for method in methods if method.startswith('do_')]
+          methods = sorted([method[3:] if method.startswith('do_') else method for method in methods])
+     return methods + ['help']
 
 @class_logger(logger_instance)
 class MainCmd(Cmd):
@@ -231,7 +234,7 @@ class Hosts(Configure):
           self.host_manager.hosts = self.host_manager.load_hosts(args[0])
           print(f"Hosts loaded from file: {args[0]}")
 
-     def show(self, args):
+     def show(self, args=None):
           """show hosts loaded"""
           print(self.host_manager.hosts)
 
