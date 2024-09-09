@@ -238,7 +238,7 @@ class Hosts(Configure):
           """show hosts loaded"""
           print(self.host_manager.hosts)
 
-     def help(self):
+     def help(self, args=None):
           """print help"""
           print("\nSubcommands:")
           for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
@@ -348,7 +348,7 @@ class Commands(Configure):
           """show commands"""
           print(list(self.cmd_manager.commands.keys()))
      
-     def help(self):
+     def help(self, args=None):
           """print help"""
           print("\nSubcommands:")
           for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
@@ -384,14 +384,14 @@ class Environment(Configure):
           else:
                self.env_manager.set_env_var(var, val)
 
-     def show(self, args):
+     def show(self, args=None):
           'Show existing environment configuration: show'
           print("\n\033[1;31mconfiguration:\033[0m")
           for var in self.env_manager.env_vars:
                print(f"    {var}={self.env_manager.get_env_var(var)}")
           print() 
 
-     def help(self, args):
+     def help(self, args=None):
           """print help"""
           print("\nSubcommands:")
           for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
